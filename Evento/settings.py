@@ -150,7 +150,7 @@ GOOGLE_OAUTH2_CLIENT_SECRETS_JSON ='C:/Users/h/Desktop/New folder/client_secret_
 #mobile_login variables
 SPRING_EDGE_API_KEY=os.getenv('SPRING_EDGE_API_KEY')
 SPRING_EDGE_SENDER_ID=os.getenv('SPRING_EDGE_SENDER_ID')
-OTP_EXPIRY_MINUTES=5
+OTP_EXPIRY_MINUTES=1
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'

@@ -14,11 +14,8 @@ class SuperuserLoginSerializer(serializers.Serializer):
         username = data.get('username')
         password = data.get('password')
 
-        if not username or not password:
-            raise serializers.ValidationError('Username and password are required')
-        
         user = authenticate(username=username, password=password)
-        if user and not user.is_superuser:
+        if not user or not user.is_superuser:
             raise serializers.ValidationError('invalid credentials')
         else:
             access_token = RefreshToken.for_user(user)
@@ -33,3 +30,4 @@ class SuperuserLoginSerializer(serializers.Serializer):
                 "user": user_serializer.data,  
                 "message": "User logged in successfully",
             }
+    

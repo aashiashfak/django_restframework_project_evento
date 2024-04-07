@@ -49,7 +49,10 @@ class EmailOTPRequestView(APIView):
                 username = email.split('@')[0] 
                 otp = generate_otp()
                 expiry_time = timezone.now() + timedelta(minutes=settings.OTP_EXPIRY_MINUTES)
-                pending_user = PendingUser.objects.create(email=email, otp=otp, expiry_time=expiry_time)
+                pending_user, created = PendingUser.objects.update_or_create(
+                    email=email,
+                    defaults={'otp': otp, 'expiry_time': expiry_time}
+                )
                 try:
                     send_otp_email(email, username, otp)  # Send OTP to the provided email address
                     return Response({"detail": "OTP sent successfully"}, status=status.HTTP_200_OK)
@@ -100,8 +103,8 @@ class OTPVerificationEmailView(APIView):
                         return Response({
                             "access_token": str(access_token.access_token),
                             "refresh_token": str(refresh_token),
-                            "refresh_token_expiry": refresh_token_exp.isoformat(),  # Serialize expiration time
-                            "user": user_serializer.data,  # Include serialized user data
+                            "refresh_token_expiry": refresh_token_exp.isoformat(),  
+                            "user": user_serializer.data,  
                             "message": "User logged in successfully",
                         }, status=status.HTTP_200_OK)
                     else:
@@ -124,7 +127,10 @@ class PhoneOTPRequestView(APIView):
                 request.session['phone_number'] = phone_number
                 otp = generate_otp()
                 expiry_time = timezone.now() + timedelta(minutes=settings.OTP_EXPIRY_MINUTES)
-                pending_user = PendingUser.objects.create(phone_number=phone_number, otp=otp, expiry_time=expiry_time)
+                pending_user, created = PendingUser.objects.update_or_create(
+                    phone_number=phone_number,
+                    defaults={'otp': otp, 'expiry_time': expiry_time}
+                )
                 try:
                     send_otp(phone_number, otp)  # Send OTP to the provided phone number
                     return Response({"detail": "OTP sent successfully"}, status=status.HTTP_200_OK)

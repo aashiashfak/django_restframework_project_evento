@@ -62,6 +62,7 @@ def send_otp(phone_number, otp):
     url= baseurl+'&sender='+sender+'&to='+mobileno+'&message='+message+'&format=json'
     response = requests.get(url)
 
+from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate
 from django.core.exceptions import ValidationError
 from django.utils import timezone

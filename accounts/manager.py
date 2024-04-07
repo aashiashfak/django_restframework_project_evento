@@ -14,7 +14,7 @@ class CustomUserManager(BaseUserManager):
         return user
 
 
-    def create_phone_user(self, phone_number, password):
+    def create_phone_user(self, phone_number, password, **extra_fields):
         """ 
         Creates and saves a User with the given phone_number and password
         """

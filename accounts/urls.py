@@ -3,7 +3,8 @@ from .views import (
     PhoneOTPRequestView,
     OTPVerificationView,
     OTPVerificationEmailView,
-    EmailOTPRequestView
+    EmailOTPRequestView,
+    ResendOTPView
 )
 from django.urls import path
 
@@ -14,6 +15,7 @@ urlpatterns = [
     path('email-otp-verification/',  OTPVerificationEmailView.as_view(), name='email-otp-verification'),
     path('phone-otp-request/', PhoneOTPRequestView.as_view(), name='phone-otp-request'),
     path('phone-otp-verification/', OTPVerificationView.as_view(), name='phone-otp-verification'),
+    path('resend-otp/', ResendOTPView.as_view(), name='resend_otp'),
 
 
 ]

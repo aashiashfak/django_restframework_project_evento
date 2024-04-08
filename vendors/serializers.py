@@ -16,9 +16,14 @@ phone_regex = RegexValidator(
     message='Phone number must be 10 digits only',
 )
 
-from rest_framework import serializers
 
 class VendorSignupSerializer(serializers.Serializer):
+    """
+    Serializer for vendor signup.
+    This serializer validates and processes data for vendor registration.
+    """
+
+    
     organizer_name = serializers.CharField(max_length=255)
     pan_card_number = serializers.CharField(max_length=20)
     address = serializers.CharField()
@@ -37,6 +42,10 @@ class VendorSignupSerializer(serializers.Serializer):
     def validate(self, data):
         """
         Validate the serializer data.
+        This method checks for password match and uniqueness of email, phone number, etc.
+        Returns Validated data if validation succeeds.
+        Raises serializers.ValidationError If password does not match or email,
+        phone number, etc. already exists.
         """
         password = data.get('password')
         confirm_password = data.get('confirm_password')
@@ -59,21 +68,29 @@ class VendorSignupSerializer(serializers.Serializer):
         if pan_card_number and Vendor.objects.filter(pan_card_number=pan_card_number).exists():
             raise serializers.ValidationError("pan_card_number already exists.")
         if account_number and Vendor.objects.filter(account_number=account_number).exists():
-            raise serializers.ValidationError("Phone number already exists.")
-
-
-
+            raise serializers.ValidationError("account number already exists.")
 
         return data
 
 
 class VendorSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Vendor model.
+
+    """
     class Meta:
         model = Vendor
         fields = '__all__'
 
 
 class VendorLoginSerializer(serializers.Serializer):
+    """
+    Serializer for vendor login.
+    This serializer validates vendor credentials for login.
+    Validates the provided credentials and generates 
+    JWT tokens if validation succeeds.
+    """
+
     email = serializers.EmailField(max_length=150)
     password = serializers.CharField(max_length=128, write_only=True)
 
@@ -84,7 +101,9 @@ class VendorLoginSerializer(serializers.Serializer):
         try:
             vendor = Vendor.objects.get(email=email)
         except Vendor.DoesNotExist:
-            raise serializers.ValidationError({'error': 'Vendor with this email does not exist'})
+            raise serializers.ValidationError(
+                {'error': 'Vendor with this email does not exist'}
+            )
 
         if not check_password(password, vendor.password):
             raise serializers.ValidationError({'error': 'Invalid email or password'})
@@ -104,3 +123,32 @@ class VendorLoginSerializer(serializers.Serializer):
             "user": vendor_serializer.data,  
             "message": "User logged in successfully",
         }
+
+
+class EmailSerializer(serializers.Serializer):
+    """
+    Serializer for validating email.
+    """
+    email = serializers.EmailField(validators=[EmailValidator()])
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """
+    Serializer for changing user password.
+
+    This serializer validates and processes data for changing the user's password.
+    """
+    password = serializers.CharField(max_length=255)
+    confirm_password = serializers.CharField(max_length=255)
+
+    def validate(self, data):
+        """
+        Validates the serializer data and checks if passwords match.
+        """
+    
+        password = data.get('password')
+        confirm_password = data.get('confirm_password')
+
+        if password != confirm_password:
+            raise serializers.ValidationError("Passwords do not match.")
+
+        return data

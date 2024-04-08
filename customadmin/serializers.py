@@ -7,16 +7,27 @@ from django.utils import timezone
 from accounts.serializers import CustomUserEmailSerializer
 
 class SuperuserLoginSerializer(serializers.Serializer):
+    """
+    Serializer for authenticating superusers and generating JWT tokens.
+    Returns A dictionary containing JWT tokens and user information
+    if authentication is successful.
+    If authentication fails, a ValidationError is raised with an appropriate
+    error message.
+    """
     username = serializers.CharField(max_length=150)
     password = serializers.CharField(max_length=128, write_only=True)
 
     def validate(self, data):
+        """
+        Validate the provided username and password, and authenticate the superuser.
+        """
         username = data.get('username')
         password = data.get('password')
 
         user = authenticate(username=username, password=password)
         if not user or not user.is_superuser:
             raise serializers.ValidationError('invalid credentials')
+        
         else:
             access_token = RefreshToken.for_user(user)
             refresh_token = RefreshToken.for_user(user)

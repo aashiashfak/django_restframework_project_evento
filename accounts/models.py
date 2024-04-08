@@ -14,7 +14,7 @@ phone_regex = RegexValidator(
 
 
 class CustomUser(AbstractBaseUser,PermissionsMixin):
-    # Define model fields
+    
     username= models.CharField(max_length=70, unique=True, null=True)
     email = models.EmailField(max_length=255, unique=True, null=True)
     is_active = models.BooleanField(default=True)
@@ -37,6 +37,9 @@ class CustomUser(AbstractBaseUser,PermissionsMixin):
     
 
 class PendingUser(models.Model):
+    """
+    Model for pending users awaiting verification.
+    """
     phone_number = models.CharField(max_length=15, null=True)
     otp = models.CharField(max_length=6)
     expiry_time = models.DateTimeField()

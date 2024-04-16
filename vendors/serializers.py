@@ -1,20 +1,19 @@
 from rest_framework import serializers
 from .models import Vendor
-from django.core.validators import EmailValidator, RegexValidator
-
+from django.core.validators import EmailValidator
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from datetime import timedelta
 from django.utils import timezone
 from django.contrib.auth.hashers import check_password
-
+from accounts import constants
+from accounts.utilities import validate_and_format_phone_number
 
 
 email_validator = EmailValidator()
-phone_regex = RegexValidator(
-    regex=r'^\d{10}$',
-    message='Phone number must be 10 digits only',
-)
+
+
+
 
 
 class VendorSignupSerializer(serializers.Serializer):
@@ -31,7 +30,7 @@ class VendorSignupSerializer(serializers.Serializer):
     email = serializers.EmailField(validators=[email_validator])
     password = serializers.CharField(max_length=255)
     confirm_password = serializers.CharField(max_length=255)
-    phone_number = serializers.CharField(max_length=10, validators=[phone_regex])
+    phone_number = serializers.CharField()
     benificiary_name = serializers.CharField(max_length=255)
     account_type = serializers.CharField(max_length=100)
     bank_name = serializers.CharField(max_length=255)
@@ -51,7 +50,11 @@ class VendorSignupSerializer(serializers.Serializer):
         confirm_password = data.get('confirm_password')
 
         if password != confirm_password:
-            raise serializers.ValidationError("Passwords do not match.")
+            raise serializers.ValidationError(constants.PASSWORDS_DO_NOT_MATCH_ERROR)
+        
+        phone_number = data.get('phone_number')
+        formatted_phone_number = validate_and_format_phone_number(phone_number)
+        data['phone_number'] = formatted_phone_number
 
         email = data.get('email')
         phone_number = data.get('phone_number')
@@ -109,7 +112,7 @@ class VendorLoginSerializer(serializers.Serializer):
             raise serializers.ValidationError({'error': 'Invalid email or password'})
 
         if not vendor.is_vendor:
-            raise serializers.ValidationError({'error': 'Invalid credentials'})
+            raise serializers.ValidationError({'error': constants.INVALID_CREDENTIALS_ERROR})
 
         access_token = RefreshToken.for_user(vendor)
         refresh_token = RefreshToken.for_user(vendor)
@@ -121,7 +124,7 @@ class VendorLoginSerializer(serializers.Serializer):
             "refresh_token": str(refresh_token),
             "refresh_token_expiry": refresh_token_exp.isoformat(),  
             "user": vendor_serializer.data,  
-            "message": "User logged in successfully",
+            "message": constants.USER_LOGGED_IN_SUCCESSFULLY,
         }
 
 
@@ -149,6 +152,63 @@ class ChangePasswordSerializer(serializers.Serializer):
         confirm_password = data.get('confirm_password')
 
         if password != confirm_password:
-            raise serializers.ValidationError("Passwords do not match.")
+            raise serializers.ValidationError(constants.PASSWORDS_DO_NOT_MATCH_ERROR)
 
         return data
+    
+
+
+class VendorProfileSerializer(serializers.ModelSerializer):
+    organizer_name = serializers.CharField(required=False)
+    pan_card_number = serializers.CharField(required=False)
+    address = serializers.CharField(required=False)
+    GSTIN = serializers.BooleanField(required=False)
+    ITR = serializers.BooleanField(required=False)
+    contact_name = serializers.CharField(required=False)
+    benificiary_name = serializers.CharField(required=False)
+    account_type = serializers.CharField(required=False)
+    bank_name = serializers.CharField(required=False)
+    account_number = serializers.CharField(required=False)
+    IFSC_code = serializers.CharField(required=False)
+
+    class Meta:
+        model = Vendor
+        fields = (
+            'organizer_name', 'pan_card_number', 'email', 'phone_number', 'address', 'GSTIN', 
+            'ITR', 'contact_name', 'benificiary_name','account_type', 'bank_name',
+            'account_number', 'IFSC_code',
+        )
+
+    def validate_organizer_name(self, value):
+        user = self.context['request'].user
+        if Vendor.objects.exclude(pk=user.pk).filter(organizer_name=value).exists():
+            raise serializers.ValidationError({"organizer_name": "This organizer name is already in use."})
+        return value
+
+    def validate_pan_card_number(self, value):
+        user = self.context['request'].user
+        if Vendor.objects.exclude(pk=user.pk).filter(pan_card_number=value).exists():
+            raise serializers.ValidationError({"pan_card_number": "This PAN card number is already in use."})
+        return value
+
+    def validate_account_number(self, value):
+        user = self.context['request'].user
+        if Vendor.objects.exclude(pk=user.pk).filter(account_number=value).exists():
+            raise serializers.ValidationError({"account_number": "This account number is already in use."})
+        return value
+
+    def update(self, instance, validated_data):
+        instance.organizer_name = validated_data.get('organizer_name', instance.organizer_name)
+        instance.pan_card_number = validated_data.get('pan_card_number', instance.pan_card_number)
+        instance.address = validated_data.get('address', instance.address)
+        instance.GSTIN = validated_data.get('GSTIN', instance.GSTIN)
+        instance.ITR = validated_data.get('ITR', instance.ITR)
+        instance.contact_name = validated_data.get('contact_name', instance.contact_name)
+        instance.benificiary_name = validated_data.get('benificiary_name', instance.benificiary_name)
+        instance.account_type = validated_data.get('account_type', instance.account_type)
+        instance.bank_name = validated_data.get('bank_name', instance.bank_name)
+        instance.account_number = validated_data.get('account_number', instance.account_number)
+        instance.IFSC_code = validated_data.get('IFSC_code', instance.IFSC_code)
+        
+        instance.save()
+        return instance

@@ -1,4 +1,4 @@
-from rest_framework import generics, status
+from rest_framework import status
 from rest_framework.response import Response
 from .models import Vendor
 from .serializers import (
@@ -6,7 +6,8 @@ from .serializers import (
     VendorSerializer,
     VendorLoginSerializer,
     EmailSerializer,
-    ChangePasswordSerializer
+    ChangePasswordSerializer,
+    VendorProfileSerializer
 )
 from rest_framework.views import APIView
 from django.utils import timezone
@@ -18,6 +19,9 @@ from accounts.utilities import generate_otp
 from .utilities import send_otp_email
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth.hashers import make_password
+from accounts import constants
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
 
 
 
@@ -50,13 +54,13 @@ class VendorSignupView(APIView):
                 send_otp_email(email, contact_name, otp)
                 request.session['vendor_signup_data'] = serializer.validated_data
                 return Response(
-                    {'message': 'OTP sent successfully'},
+                    {'message': constants.OTP_SENT_SUCCESSFULLY},
                     status=status.HTTP_200_OK
                 )
             except Exception as e:
                 pending_user.delete()
                 return Response(
-                    {'error': 'Failed to send OTP. Please try again.'},
+                    {'error': constants.FAILED_TO_SEND_OTP_ERROR},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -78,7 +82,7 @@ class VendorVerifyOtpView(APIView):
             email = request.session['vendor_signup_data']['email']
         except KeyError:
             return Response(
-                {'error': 'Email not found in session'},
+                {'error': constants.EMAIL_NOT_FOUND_ERROR},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -91,7 +95,7 @@ class VendorVerifyOtpView(APIView):
                     if pending_user.expiry_time < timezone.now():
                         pending_user.delete()
                         return Response(
-                            {'error': 'OTP expired. Please request a new one.'},
+                            {'error': constants.OTP_EXPIRED_ERROR},
                             status=status.HTTP_400_BAD_REQUEST
                         )
                     vendor_data = request.session.get('vendor_signup_data')
@@ -118,16 +122,11 @@ class VendorVerifyOtpView(APIView):
                     }, status=status.HTTP_200_OK)
                 except PendingUser.DoesNotExist:
                     return Response(
-                        {'error': 'Invalid OTP'},
+                        {'error': constants.INVALID_OTP},
                         status=status.HTTP_400_BAD_REQUEST
                     )
         else:
             return Response(otp_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
-        return Response(
-            {'error': 'No pending user found'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
 
 
 class VendorLoginView(APIView):
@@ -176,13 +175,13 @@ class VendorForgetPasswordOTPsent(APIView):
                 try:
                     send_otp_email(email, contact_name, otp)
                     return Response(
-                        {"detail": "OTP sent successfully"},
+                        {"detail": constants.OTP_SENT_SUCCESSFULLY},
                         status=status.HTTP_200_OK
                     )
                 except Exception:
                     pending_user.delete()
                     return Response(
-                        {"error": "Failed to send OTP"},
+                        {"error": constants.FAILED_TO_SEND_OTP_ERROR},
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR
                     )
 
@@ -213,7 +212,7 @@ class VerifyOTPView(APIView):
                 email = request.session['email']
             except Exception:
                 return Response(
-                    {"error": "email does not find in session"},
+                    {"error": constants.EMAIL_NOT_FOUND_ERROR},
                     status=status.HTTP_404_NOT_FOUND
                 )
             try:
@@ -221,7 +220,7 @@ class VerifyOTPView(APIView):
                 if pending_user.expiry_time < timezone.now():
                     pending_user.delete()
                     return Response(
-                        {'error': 'OTP expired. Please request a new one.'},
+                        {'error': constants.OTP_EXPIRED_ERROR},
                         status=status.HTTP_400_BAD_REQUEST
                     )
                 else:
@@ -232,7 +231,7 @@ class VerifyOTPView(APIView):
                     )
             except PendingUser.DoesNotExist:
                 return Response(
-                    {'error': 'Invalid OTP'},
+                    {'error': constants.INVALID_OTP},
                     status=status.HTTP_400_BAD_REQUEST
                 )
         else:
@@ -258,7 +257,7 @@ class ChangePasswordView(APIView):
                 try:
                     vendor = Vendor.objects.get(email=email)
                     vendor.password = hashed_password
-                    vendor.save()
+                    vendor.save(update_fields=['password'])
                     return Response(
                         {"detail": "Password changed successfully"},
                         status=status.HTTP_200_OK
@@ -270,7 +269,7 @@ class ChangePasswordView(APIView):
                         )
             else:
                 return Response(
-                    {"error": "Email not found in session"},
+                    {"error": constants.EMAIL_NOT_FOUND_ERROR},
                     status=status.HTTP_404_NOT_FOUND
                 )
         else:
@@ -278,7 +277,43 @@ class ChangePasswordView(APIView):
         
 
               
-       
-       
+from django.http import Http404
 
-    
+class VendorProfileAPIView(APIView):
+    """
+    View for retrieving and updating vendor profile information.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = VendorProfileSerializer
+
+    def get(self, request):
+        """
+        Retrieve the profile information of the authenticated vendor.
+        """
+        print("Request User:", request.user)
+        print("Request Auth:", request.auth)
+        
+        vendor = getattr(request, 'vendor', None)
+        
+        if not vendor:
+            return Response({'error': 'Vendor profile does not exist'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = self.serializer_class(vendor, context={'request': request})
+        return Response(serializer.data)
+
+    def put(self, request):
+        """
+        Update the profile information of the authenticated vendor.
+        """
+        vendor = getattr(request, 'vendor', None)
+        
+        if not vendor:
+            return Response({'error': 'Vendor profile does not exist'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = VendorProfileSerializer(vendor, data=request.data, context={'request': request})
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

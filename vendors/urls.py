@@ -5,7 +5,8 @@ from .views import (
     VendorLoginView,
     VendorForgetPasswordOTPsent,
     VerifyOTPView,
-    ChangePasswordView
+    ChangePasswordView,
+    VendorProfileAPIView,
 )
 
 urlpatterns = [
@@ -14,5 +15,6 @@ urlpatterns = [
     path('vendor/login/', VendorLoginView.as_view(), name='vendor_login'),
     path('vendor/forget-password/', VendorForgetPasswordOTPsent.as_view(), name='forget_password'),
     path('vendor/verify-fortget-otp/', VerifyOTPView.as_view(), name='forget_Pass_verify_otp'),
-    path('vendor/change-password/', ChangePasswordView.as_view(), name='change_password')
+    path('vendor/change-password/', ChangePasswordView.as_view(), name='change_password'),
+    path('vendor/profile/', VendorProfileAPIView.as_view(), name='vendor-profile')
 ]

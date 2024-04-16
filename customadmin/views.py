@@ -1,8 +1,14 @@
-from .serializers import SuperuserLoginSerializer
+from .serializers import (
+    SuperuserLoginSerializer,
+    CategorySerializer,
+    LocationSerializer
+)
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
+from rest_framework import generics, mixins
+from .models import Category,Location
 
 class SuperUserLoginView(APIView):
     """
@@ -10,11 +16,9 @@ class SuperUserLoginView(APIView):
     This view allows superusers to authenticate and obtain JWT tokens
     for authorization.
     A list containing the permission classes applied to this view. 
-    AllowAny permission is used to allow unauthenticated requests.
     Handles POST requests for superuser login. It validates the provided credentials
     using the SuperuserLoginSerializer.
     """
-    permission_classes = [AllowAny]
     def post(self, request):
         """
         Handle POST requests for superuser login.
@@ -28,7 +32,51 @@ class SuperUserLoginView(APIView):
         
         
         
+class CategoryListCreateAPIView(generics.ListCreateAPIView):
+    serializer_class = CategorySerializer
+    queryset = Category.objects.all()
+
+    def get(self, request):
+        return self.list(request)
+
+    def post(self, request):
+        return self.create(request)
+    
+class CategoryRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = CategorySerializer
+    queryset = Category.objects.all()
+    lookup_field = 'id'
+
+    def get(self, request, id=None):
+        return self.retrieve(request, id)
+
+    def put(self, request, id=None):
+        return self.update(request, id)
+
+    def delete(self, request, id=None):
+        return self.destroy(request, id)
 
 
-       
+class LocationListCreateAPIView(generics.ListCreateAPIView):
+    serializer_class = LocationSerializer
+    queryset = Location.objects.all()
 
+    def get(self, request):
+        return self.list(request)
+
+    def post(self, request):
+        return self.create(request)
+    
+class LocationRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = LocationSerializer
+    queryset = Location.objects.all()
+    lookup_field = 'id'
+
+    def get(self, request, id=None):
+        return self.retrieve(request, id)
+
+    def put(self, request, id=None):
+        return self.update(request, id)
+
+    def delete(self, request, id=None):
+        return self.destroy(request, id)

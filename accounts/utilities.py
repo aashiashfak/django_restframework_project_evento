@@ -3,11 +3,13 @@ from google.oauth2 import id_token
 from .models import CustomUser
 from django.contrib.auth import authenticate
 from django.conf import settings
-from .models import CustomUser, PendingUser
+from .models import CustomUser
 import random
-from django.core.exceptions import ValidationError
 from django.utils import timezone
 import requests
+import phonenumbers
+from phonenumbers.phonenumberutil import NumberParseException
+from rest_framework import serializers
 
 
 class Google_signin():
@@ -45,7 +47,7 @@ def login_google_user(email, password):
        'refresh_token':str(user_tokens.get('refresh'))
     }
         
-def register_google_user( email,username):
+def register_google_user(email,username):
     """
     Register a new user with Google credentials.
 
@@ -81,7 +83,7 @@ def send_otp(phone_number, otp):
     Send OTP to the given phone number.
     """
     message = f'Hello {otp}, This is a test message from spring edge '
-    mobileno= f'91{phone_number}'
+    mobileno= phone_number
     sender = 'SEDEMO'
     apikey = '621492a44a89m36c2209zs4l7e74672cj'
 
@@ -110,33 +112,22 @@ def create_Mobile_user(phone_number, otp):
 
     Raises ValidationError If OTP is invalid or has expired.
     """
-    try:
-        pending_user = PendingUser.objects.get(phone_number=phone_number, otp=otp)
-        if pending_user.expiry_time >= timezone.now():
-            user = CustomUser.objects.filter(phone_number=phone_number).first()
-            if user:
-                return user
-            
-            else:
-                # If user doesn't exist, create new one
-                new_user = CustomUser.objects.create_phone_user(
-                    phone_number=phone_number,
-                    password=settings.CUSTOM_PASSWORD_FOR_AUTH
-                )
-                new_user.is_active = True
-                new_user.save()
-                return new_user
-            
-        else:
-            raise ValidationError("OTP has expired")
-        
-    except PendingUser.DoesNotExist:
-        raise ValidationError("Invalid OTP")
+    user = CustomUser.objects.filter(phone_number=phone_number).first()
+    if user:
+        user.last_login = timezone.now()
+        user.save(update_fields=['last_login'])
+        return user    
+    else:
+        # If user doesn't exist, create new one
+        new_user = CustomUser.objects.create_phone_user(
+            phone_number=phone_number,
+            password=settings.CUSTOM_PASSWORD_FOR_AUTH
+        )
+        new_user.is_active = True
+        new_user.save(update_fields=['is_active'])
+        return new_user
 
-
-
-
-def create_email_user(email, otp):
+def create_email_user(email):
     """
     Create or retrieve a user using the provided email and OTP.
 
@@ -145,24 +136,36 @@ def create_email_user(email, otp):
     Raises ValidationError: If OTP is invalid or has expired.
     """
 
+    user = CustomUser.objects.filter(email=email).first()
+    if user:
+        user.last_login = timezone.now()
+        user.save(update_fields=['last_login'])
+        return user
+    else:
+        username = email.split('@')[0] 
+        new_user = CustomUser.objects.create_user(
+            email=email, username=username,
+            password=settings.CUSTOM_PASSWORD_FOR_AUTH
+        )
+        new_user.is_active = True
+        new_user.save(update_fields=['is_active'])
+        return new_user   
+
+
+def validate_and_format_phone_number(phone_number):
+    """
+    Validate and format the phone number using phonenumbers library.
+    Returns the formatted phone number or raises a validation error.
+    """
     try:
-        pending_user = PendingUser.objects.get(email=email, otp=otp)
-        if pending_user.expiry_time >= timezone.now():
-            user = CustomUser.objects.filter(email=email).first()
-            if user:
-                return user
-            
-            else:
-                username = email.split('@')[0] 
-                new_user = CustomUser.objects.create_user(
-                    email=email, username=username,
-                    password=settings.CUSTOM_PASSWORD_FOR_AUTH
-                )
-                new_user.is_active = True
-                new_user.save()
-                return new_user   
-        else:
-            raise ValidationError("OTP has expired")
+        parsed_number = phonenumbers.parse(phone_number, None)
+        if not phonenumbers.is_valid_number(parsed_number):
+            raise serializers.ValidationError("Invalid phone number format.")
         
-    except PendingUser.DoesNotExist:
-        raise ValidationError("Invalid OTP")
+        formatted_number = phonenumbers.format_number(
+            parsed_number,
+            phonenumbers.PhoneNumberFormat.E164
+        )
+        return formatted_number
+    except NumberParseException:
+        raise serializers.ValidationError("Invalid phone number.")

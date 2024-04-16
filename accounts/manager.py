@@ -10,7 +10,7 @@ class CustomUserManager(BaseUserManager):
         email = self.normalize_email(email)
         user = self.model(username=username, email=email, password=password, **extra_fields)
         user.set_password(password) 
-        user.save(using=self._db)
+        user.save()
         return user
 
 
@@ -22,7 +22,7 @@ class CustomUserManager(BaseUserManager):
             raise ValueError('The phone_number field must be set')
         user = self.model(phone_number=phone_number)
         user.set_password(password)  
-        user.save(using=self._db)  
+        user.save()  
         return user  
 
 

@@ -8,5 +8,5 @@ class UserAdmin(admin.ModelAdmin):
     list_display = ['username', 'email', 'phone_number', 'date_joined', 'last_login', 'is_staff', 'is_superuser', 'is_active'] 
 
 
-admin.site.register(CustomUser,UserAdmin)
+admin.site.register(CustomUser)
 admin.site.register(PendingUser)

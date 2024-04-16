@@ -6,7 +6,12 @@ from .serializers import (
     PhoneOTPRequestSerializer,
     OTPVerificationSerializer,
     EmailOTPRequestSerializer,
-    CustomUserEmailSerializer
+    CustomUserEmailSerializer,
+    UserProfileSerializer,
+    UpdateEmailSerializer,
+    VerifyUpdateEmailOTPSerializer,
+    UpdatePhoneSerializer,
+    VerifyUpdatePhoneOTPSerializer
     # CustomUserPhoneSerializer,
 )
 from rest_framework.response import Response
@@ -17,13 +22,15 @@ from datetime import timedelta
 from django.conf import settings
 from vendors.utilities import send_otp_email
 from django.utils import timezone
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
 from .utilities import (
     send_otp,
     create_Mobile_user,
     generate_otp,
     create_email_user
 )
-
+from .import constants
 # Create your views here.
 
 
@@ -76,7 +83,7 @@ class EmailOTPRequestView(APIView):
                 try:
                     send_otp_email(email, username, otp)  
                     return Response(
-                        {"detail": "OTP sent successfully"},
+                        {"detail": constants.OTP_SENT_SUCCESSFULLY},
                         status=status.HTTP_200_OK
                     )
                 except Exception as e:
@@ -87,7 +94,7 @@ class EmailOTPRequestView(APIView):
                     )
             else:
                 return Response(
-                    {"error": "Email not provided"},
+                    {"error": constants.EMAIL_NOT_PROVIDED_ERROR},
                     status=status.HTTP_400_BAD_REQUEST
                 )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -110,7 +117,7 @@ class OTPVerificationEmailView(APIView):
             email = request.session.get('email')
             if not email:
                 return Response(
-                    {"error": "Email not found in session"},
+                    {"error": constants.EMAIL_NOT_FOUND_ERROR},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
@@ -120,13 +127,13 @@ class OTPVerificationEmailView(APIView):
                     if pending_user.expiry_time >= timezone.now():
                         print(timezone.now())
 
-                        user = create_email_user(email, otp)
+                        user = create_email_user(email)
                         pending_user.delete()
 
                         access_token = RefreshToken.for_user(user)
                         refresh_token = RefreshToken.for_user(user)
                         
-                        refresh_token_exp = timezone.now() + timedelta(days=365)
+                        refresh_token_exp = timezone.now() + timedelta(days=100)
 
                         user_serializer = CustomUserEmailSerializer(user)
 
@@ -135,21 +142,21 @@ class OTPVerificationEmailView(APIView):
                             "refresh_token": str(refresh_token),
                             "refresh_token_expiry": refresh_token_exp.isoformat(),  
                             "user": user_serializer.data,  
-                            "message": "User logged in successfully",
+                            "message": constants.USER_LOGGED_IN_SUCCESSFULLY,
                         }, status=status.HTTP_200_OK)
                     else:
                         return Response(
-                            {"error": "OTP has expired"},
+                            {"error": constants.OTP_EXPIRED_ERROR},
                             status=status.HTTP_400_BAD_REQUEST
                         )
                 except PendingUser.DoesNotExist:
                     return Response(
-                        {"error": "Invalid OTP"},
+                        {"error": constants.INVALID_OTP},
                         status=status.HTTP_400_BAD_REQUEST
                     )
             else:
                 return Response(
-                    {"error": "Invalid OTP"},
+                    {"error": constants.INVALID_OTP},
                     status=status.HTTP_400_BAD_REQUEST
                 )
         else:
@@ -173,6 +180,7 @@ class PhoneOTPRequestView(APIView):
         serializer = PhoneOTPRequestSerializer(data=request.data)
         if serializer.is_valid():
             phone_number = serializer.validated_data.get('phone_number')
+            print(f'your phone number is {phone_number}')
             if phone_number:
                 request.session['phone_number'] = phone_number
                 otp = generate_otp()
@@ -186,7 +194,7 @@ class PhoneOTPRequestView(APIView):
                 try:
                     send_otp(phone_number, otp)  
                     return Response(
-                        {"detail": "OTP sent successfully"},
+                        {"detail": constants.OTP_SENT_SUCCESSFULLY},
                         status=status.HTTP_200_OK
                     )
                 except Exception as e:
@@ -197,7 +205,7 @@ class PhoneOTPRequestView(APIView):
                     )
             else:
                 return Response(
-                    {"error": "Phone number not provided"},
+                    {"error": constants.PHONE_NUMBER_NOT_PROVIDED},
                     status=status.HTTP_400_BAD_REQUEST
                 )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -248,21 +256,21 @@ class OTPVerificationView(APIView):
                             "refresh_token": str(refresh_token),
                             "refresh_token_expiry": refresh_token_expiry.isoformat(), 
                             "user": user_data,  
-                            "detail": "User logged in successfully",
+                            "detail": constants.USER_LOGGED_IN_SUCCESSFULLY,
                         }, status=status.HTTP_200_OK)
                     else:
                         return Response(
-                            {"error": "OTP has expired"},
+                            {"error": constants.OTP_EXPIRED_ERROR},
                             status=status.HTTP_400_BAD_REQUEST
                         )
                 except PendingUser.DoesNotExist:
                     return Response(
-                        {"error": "Invalid OTP"},
+                        {"error": constants.INVALID_OTP},
                         status=status.HTTP_400_BAD_REQUEST
                     )
             else:
                 return Response(
-                    {"error": "Invalid OTP or phone number"},
+                    {"error": constants.PHONE_NUMBER_NOT_FOUND},
                     status=status.HTTP_400_BAD_REQUEST
                 )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -287,7 +295,7 @@ class ResendOTPView(APIView):
                     pending_user = PendingUser.objects.get(email=email)
                 except PendingUser.DoesNotExist:
                     return Response(
-                        {"error": "Pending user not found"},
+                        {"error": constants.PENDING_USER_NOT_FOUND_ERROR},
                         status=status.HTTP_404_NOT_FOUND
                     )
                 contact_info = email
@@ -296,13 +304,13 @@ class ResendOTPView(APIView):
                     pending_user = PendingUser.objects.get(phone_number=phone_number)
                 except PendingUser.DoesNotExist:
                     return Response(
-                        {"error": "Pending user not found"},
+                        {"error": constants.PENDING_USER_NOT_FOUND_ERROR},
                         status=status.HTTP_404_NOT_FOUND
                     )
                 contact_info = phone_number
             else:
                 return Response(
-                    {"error": "Email or phone number not found in session"},
+                    {"error": constants.CONTACT_INFO_NOT_FOUND_ERROR},
                     status=status.HTTP_404_NOT_FOUND
                     )
 
@@ -326,13 +334,149 @@ class ResendOTPView(APIView):
                     else:
                         send_otp(contact_info, otp)
                     return Response(
-                        {"detail": "OTP resent successfully"},
+                        {"detail": constants.OTP_RESENT_SUCCESSFULLY},
                         status=status.HTTP_200_OK
                     )
                 except Exception as e:
                     return Response(
-                        {"error": "Failed to send OTP. Please try again later."},
+                        {"error": constants.FAILED_TO_SEND_OTP_ERROR},
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR
                     )
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+class UserProfileAPIView(APIView):
+    """
+    View for retrieving and updating user profile information.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class=UserProfileSerializer
+    def get(self, request):
+        """
+        Retrieve the profile information of the authenticated user.
+        """
+        try:
+            serializer = self.serializer_class(request.user, context={'request': request})
+            return Response(serializer.data)
+        except PermissionDenied:
+            return Response({'error': 'Authentication failed'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    def put(self, request):
+        """
+        Update the profile information of the authenticated user.
+        """
+        try:
+            serializer = UserProfileSerializer(request.user, data=request.data, context={'request': request})
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except PermissionDenied:
+            return Response({'error': 'Authentication failed'}, status=status.HTTP_401_UNAUTHORIZED)
+
+
+class UpdateEmailAPIView(APIView):
+    """
+    API view for updating email and sending OTP.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """
+        Update email and send OTP.
+        """
+        serializer = UpdateEmailSerializer(data=request.data, context={'request': request})
+        
+        if serializer.is_valid():
+            email = serializer.validated_data.get('email')
+            request.session['email'] = email
+            
+            # Create or update PendingUser
+            pending_user, created = PendingUser.objects.update_or_create(
+                defaults={
+                    'email': email,
+                    'otp': generate_otp(),
+                    'expiry_time': timezone.now() + timedelta(minutes=settings.OTP_EXPIRY_MINUTES)
+                }
+            )
+            try:
+                send_otp_email(email, request.user.username, pending_user.otp)
+                
+                return Response({"detail": "OTP sent successfully"}, status=status.HTTP_200_OK)
+            
+            except Exception as e:
+                pending_user.delete()
+                return Response({"error": "Failed to send OTP"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class VerifyUpdateEmailOTPView(APIView):
+    """
+    View to verify OTP and update user's email.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = VerifyUpdateEmailOTPSerializer
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data, context={'request': request})
+        
+        if serializer.is_valid():
+            serializer.update(request.user, serializer.validated_data)
+
+            return Response({"message": "Email updated successfully"})
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class UpdatePhoneAPIView(APIView):
+    """
+    API view for updating phone number and sending OTP.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        """
+        Update phone number and send OTP.
+        """
+        serializer = UpdatePhoneSerializer(data=request.data, context={'request': request})
+        
+        if serializer.is_valid():
+            phone_number = serializer.validated_data.get('phone_number')
+            request.session['phone_number'] = phone_number
+            
+            # Create or update PendingUser
+            pending_user, created = PendingUser.objects.update_or_create(
+                defaults={
+                    'phone_number': phone_number,
+                    'otp': generate_otp(),
+                    'expiry_time': timezone.now() + timedelta(minutes=settings.OTP_EXPIRY_MINUTES)
+                }
+            )
+            try:
+                send_otp(phone_number, pending_user.otp)
+                
+                return Response({"detail": "OTP sent successfully"}, status=status.HTTP_200_OK)
+            
+            except Exception as e:
+                pending_user.delete()
+                return Response({"error": "Failed to send OTP"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class VerifyUpdatePhoneOTPView(APIView):
+    """
+    View to verify OTP and update user's phone number.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = VerifyUpdatePhoneOTPSerializer
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data, context={'request': request})
+        
+        if serializer.is_valid():
+            serializer.update(request.user, serializer.validated_data)
+
+            return Response({"message": "Phone number updated successfully"})
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

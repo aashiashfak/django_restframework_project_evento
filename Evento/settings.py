@@ -37,6 +37,9 @@ DEBUG = True
 ALLOWED_HOSTS = []
 
 
+
+
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -52,6 +55,9 @@ INSTALLED_APPS = [
     'customadmin',
     #third party
     'rest_framework',
+    'debug_toolbar',
+
+
     
 ]
 
@@ -63,6 +69,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
 ]
 
 ROOT_URLCONF = 'Evento.urls'
@@ -161,4 +168,15 @@ EMAIL_HOST_USER = 'hariporter777@gmail.com'  # Your Gmail email address
 EMAIL_HOST_PASSWORD = 'mdna lafx aznk mavf'
 
 
+INTERNAL_IPS = [
+    "127.0.0.1",
+]
 
+
+
+REST_FRAMEWORK = {
+    
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    )
+}

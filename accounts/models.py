@@ -2,30 +2,36 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser,PermissionsMixin
 from django.db import models
 from .manager import CustomUserManager
-from django.core.validators import RegexValidator
+from django.core.validators import EmailValidator
 from django.conf import settings
 
 
 
-phone_regex = RegexValidator(
-    regex=r'^\d{10}',message='phone number must be 10 digits only.'
-)
+
+email_validator = EmailValidator()
+
  
 
 
 class CustomUser(AbstractBaseUser,PermissionsMixin):
     
     username= models.CharField(max_length=70, unique=True, null=True)
-    email = models.EmailField(max_length=255, unique=True, null=True)
+    profile_picture = models.ImageField(upload_to='profile_pictures/', null=True, blank=True)
+    email = models.EmailField(max_length=255, unique=True, null=True,validators=[email_validator])
     is_active = models.BooleanField(default=True)
     is_superuser = models.BooleanField(default=False)
     phone_number = models.CharField(max_length=20, blank=True, null=True)
     date_joined = models.DateTimeField(auto_now_add=True)
     last_login  = models.DateTimeField(auto_now=True)
     is_staff = models.BooleanField(default=False) 
+    is_vendor = models.BooleanField(default=False) 
+
+    # vendor_id = 
    
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = ['email']
+
+# class VendorDetails(models.Model):
 
     objects = CustomUserManager()
 
@@ -46,4 +52,8 @@ class PendingUser(models.Model):
     email= models.EmailField(max_length=255, null=True)
 
     
+
+
+
+
 

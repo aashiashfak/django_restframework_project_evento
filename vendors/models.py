@@ -1,8 +1,5 @@
 from django.db import models
 
-from django.db import models
-from django.db import models
-
 class Vendor(models.Model):
      
     ACCOUNT_TYPE_CHOICES = [
@@ -27,6 +24,8 @@ class Vendor(models.Model):
     IFSC_code = models.CharField(max_length=20)
     is_vendor = models.BooleanField(default=False)
     is_active = models.BooleanField(default=False)
+    
+
 
 
     def __str__(self):

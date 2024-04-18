@@ -12,6 +12,8 @@ from phonenumbers.phonenumberutil import NumberParseException
 from rest_framework import serializers
 
 
+
+
 class Google_signin():
     """
     Class for Google Sign-In authentication.
@@ -169,3 +171,4 @@ def validate_and_format_phone_number(phone_number):
         return formatted_number
     except NumberParseException:
         raise serializers.ValidationError("Invalid phone number.")
+    

@@ -1,19 +1,19 @@
-from rest_framework import status
-from rest_framework.response import Response
-from .models import Vendor
+# from rest_framework import status
+# from rest_framework.response import Response
+
 from .serializers import (
     VendorSignupSerializer,
     VendorSerializer,
     VendorLoginSerializer,
     EmailSerializer,
-    ChangePasswordSerializer,
-    VendorProfileSerializer
+    ChangeForgetPasswordSerializer,
+    VendorProfileSerializer,
 )
-from rest_framework.views import APIView
-from django.utils import timezone
-from datetime import timedelta
+# from rest_framework.views import APIView
+# from django.utils import timezone
+# from datetime import timedelta
 from accounts.serializers import OTPVerificationSerializer
-from accounts.models import PendingUser
+# from accounts.models import PendingUser
 from django.conf import settings
 from accounts.utilities import generate_otp
 from .utilities import send_otp_email
@@ -22,7 +22,18 @@ from django.contrib.auth.hashers import make_password
 from accounts import constants
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
+from accounts.models import CustomUser,PendingUser,VendorManager
+from accounts.permissions import IsVendor
 
+
+
+
+from rest_framework import status,generics
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from .serializers import VendorSignupSerializer
+from django.utils import timezone
+from datetime import timedelta
 
 
 class VendorSignupView(APIView):
@@ -40,32 +51,28 @@ class VendorSignupView(APIView):
         """
         serializer = VendorSignupSerializer(data=request.data)
         if serializer.is_valid():
+            # Save data in session
+            request.session['vendor_signup_data'] = serializer.validated_data
+
+            # Get email from validated data
             email = serializer.validated_data['email']
+
             otp = generate_otp()
-            expiry_time = timezone.now() + timedelta(
-                minutes=settings.OTP_EXPIRY_MINUTES
-            )
+            expiry_time = timezone.now() + timedelta(minutes=settings.OTP_EXPIRY_MINUTES)
             pending_user, created = PendingUser.objects.update_or_create(
-                    email=email,
-                    defaults={'otp': otp, 'expiry_time': expiry_time}
-                )
-            contact_name=serializer.validated_data['contact_name']
+                email=email,
+                defaults={'otp': otp, 'expiry_time': expiry_time}
+            )
+
             try:
-                send_otp_email(email, contact_name, otp)
-                request.session['vendor_signup_data'] = serializer.validated_data
-                return Response(
-                    {'message': constants.OTP_SENT_SUCCESSFULLY},
-                    status=status.HTTP_200_OK
-                )
+                send_otp_email(email, serializer.validated_data['contact_name'], otp)
+                return Response({'message': 'OTP sent successfully.'}, status=status.HTTP_200_OK)
             except Exception as e:
                 pending_user.delete()
-                return Response(
-                    {'error': constants.FAILED_TO_SEND_OTP_ERROR},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
+                return Response({'error': 'Failed to send OTP.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
 
+    
 class VendorVerifyOtpView(APIView):
     """
     View for verifying OTP during vendor signup.
@@ -99,20 +106,19 @@ class VendorVerifyOtpView(APIView):
                             status=status.HTTP_400_BAD_REQUEST
                         )
                     vendor_data = request.session.get('vendor_signup_data')
-                    vendor_data.pop('confirm_password')  
+                    vendor_data.pop('confirm_password')
                     password = vendor_data.pop('password')
-                    hashed_password = make_password(password)
-                    vendor = Vendor.objects.create(
-                        **vendor_data,
-                        password=hashed_password,
-                        is_vendor=True,
-                        is_active=True
-                    ) 
-                    vendor.save()
-                    access_token = RefreshToken.for_user(vendor)
-                    refresh_token = RefreshToken.for_user(vendor)
+                    
+                    # Create vendor user and vendor using custom manager
+                    vendor_manager = VendorManager()
+                    user, vendor = vendor_manager.create_vendor_user(vendor_data, password)
+                    
+                    access_token = RefreshToken.for_user(user)
+                    refresh_token = RefreshToken.for_user(user)
                     refresh_token_exp = timezone.now() + timedelta(days=365)
+                    
                     pending_user.delete()
+                    
                     vendor_serializer = VendorSerializer(vendor)
                     return Response({
                         'vendor': vendor_serializer.data,
@@ -134,6 +140,7 @@ class VendorLoginView(APIView):
     View for vendor login.
     This view handles the authentication of vendor login requests.
     """
+
     def post(self, request):
         """
         Handle POST request for vendor login.
@@ -163,7 +170,13 @@ class VendorForgetPasswordOTPsent(APIView):
             otp = generate_otp()
 
             try:
-                vendor = Vendor.objects.get(email=email)
+                vendor = CustomUser.objects.get(email=email)
+                if not vendor.is_vendor:
+                    return Response(
+                        {"error": "Vendor with this email does not exist"},
+                        status=status.HTTP_404_NOT_FOUND
+                    )
+                    
                 expiry_time = timezone.now() + timedelta(
                     minutes=settings.OTP_EXPIRY_MINUTES
                 )
@@ -185,7 +198,7 @@ class VendorForgetPasswordOTPsent(APIView):
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR
                     )
 
-            except Vendor.DoesNotExist:
+            except CustomUser.DoesNotExist:
                 return Response(
                     {"error": "Vendor with this email does not exist"},
                     status=status.HTTP_404_NOT_FOUND
@@ -248,21 +261,21 @@ class ChangePasswordView(APIView):
         This method validates the provided data and changes the password of the vendor.
         Return Response object containing the result of the password change process.
         """
-        serializer = ChangePasswordSerializer(data=request.data)
+        serializer = ChangeForgetPasswordSerializer(data=request.data)
         if serializer.is_valid():
             new_password = serializer.validated_data.get('password')
             hashed_password = make_password(new_password)
             email = request.session.get('email')
             if email:
                 try:
-                    vendor = Vendor.objects.get(email=email)
+                    vendor = CustomUser.objects.get(email=email)
                     vendor.password = hashed_password
                     vendor.save(update_fields=['password'])
                     return Response(
                         {"detail": "Password changed successfully"},
                         status=status.HTTP_200_OK
                         )
-                except Vendor.DoesNotExist:
+                except CustomUser.DoesNotExist:
                     return Response(
                         {"error": "Vendor with this email does not exist"},
                         status=status.HTTP_404_NOT_FOUND
@@ -277,35 +290,34 @@ class ChangePasswordView(APIView):
         
 
               
-from django.http import Http404
+# from django.http import Http404
+
+ 
 
 class VendorProfileAPIView(APIView):
     """
     View for retrieving and updating vendor profile information.
     """
-    permission_classes = [IsAuthenticated]
-    serializer_class = VendorProfileSerializer
-
+    permission_classes = [IsAuthenticated, IsVendor]
+    
     def get(self, request):
         """
         Retrieve the profile information of the authenticated vendor.
         """
-        print("Request User:", request.user)
-        print("Request Auth:", request.auth)
-        
-        vendor = getattr(request, 'vendor', None)
+        vendor = getattr(request.user, 'vendor', None)
         
         if not vendor:
             return Response({'error': 'Vendor profile does not exist'}, status=status.HTTP_404_NOT_FOUND)
 
-        serializer = self.serializer_class(vendor, context={'request': request})
+        # Serialize the Vendor data using VendorSerializer
+        serializer = VendorSerializer(vendor)
         return Response(serializer.data)
 
     def put(self, request):
         """
         Update the profile information of the authenticated vendor.
         """
-        vendor = getattr(request, 'vendor', None)
+        vendor = getattr(request.user, 'vendor', None)
         
         if not vendor:
             return Response({'error': 'Vendor profile does not exist'}, status=status.HTTP_404_NOT_FOUND)
@@ -317,3 +329,84 @@ class VendorProfileAPIView(APIView):
             return Response(serializer.data)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+
+
+from django.shortcuts import get_object_or_404        
+from events.models import Event,TicketType
+from events.serializers import (
+    EventCreateSerializer,
+    EventRetrieveSerializer,
+    EventUpdateSerializer,
+    TicketTypeSerializer
+
+)
+
+class CreateEventView(APIView):
+    permission_classes = [IsAuthenticated, IsVendor]
+
+    def get(self, request):
+        events = Event.objects.filter(vendor=request.user)
+        serializer = EventCreateSerializer(events, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = EventCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            # Assign vendor_id before saving the event
+            serializer.validated_data['vendor_id'] = request.user.id  # Assuming user is authenticated vendor
+            
+            # Save the event
+            event = serializer.save()
+            
+            # Return success response
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            # Return error response if serializer is invalid
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+
+
+        
+
+class VendorEventDetailView(APIView):
+    permission_classes = [IsAuthenticated, IsVendor]
+
+    def get(self, request, event_id):
+        event = get_object_or_404(Event, pk=event_id, vendor=request.user)
+        serializer = EventRetrieveSerializer(event)
+        return Response(serializer.data)
+
+    def put(self, request, event_id):
+        event = get_object_or_404(Event, pk=event_id)
+            
+        serializer = EventUpdateSerializer(instance=event, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, event_id):
+        event = get_object_or_404(Event, pk=event_id, vendor=request.user)
+        event.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+
+
+class TicketTypeListCreateAPIView(generics.ListCreateAPIView):
+    serializer_class = TicketTypeSerializer
+    permission_classes = [IsAuthenticated, IsVendor]
+
+    def get_queryset(self):
+        # Filter ticket types created by the authenticated user
+        return TicketType.objects.filter(event__vendor=self.request.user)
+
+class TicketTypeDetailUpdateAPIView(generics.RetrieveUpdateAPIView):
+    queryset = TicketType.objects.all()
+    serializer_class = TicketTypeSerializer
+    permission_classes = [IsAuthenticated, IsVendor]
+
+    def get_serializer(self, *args, **kwargs):
+        kwargs['partial'] = True
+        return super().get_serializer(*args, **kwargs)

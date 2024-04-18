@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'accounts',
     'vendors',
     'customadmin',
+    'events',
     #third party
     'rest_framework',
     'debug_toolbar',

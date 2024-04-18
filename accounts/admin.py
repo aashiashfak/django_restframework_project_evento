@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CustomUser,PendingUser
+from .models import CustomUser,PendingUser,Vendor
 
 # Register your models here.
 
@@ -10,3 +10,4 @@ class UserAdmin(admin.ModelAdmin):
 
 admin.site.register(CustomUser)
 admin.site.register(PendingUser)
+admin.site.register(Vendor)

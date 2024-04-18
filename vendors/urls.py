@@ -7,6 +7,10 @@ from .views import (
     VerifyOTPView,
     ChangePasswordView,
     VendorProfileAPIView,
+    CreateEventView,
+    VendorEventDetailView,
+    TicketTypeListCreateAPIView,
+    TicketTypeDetailUpdateAPIView
 )
 
 urlpatterns = [
@@ -16,5 +20,9 @@ urlpatterns = [
     path('vendor/forget-password/', VendorForgetPasswordOTPsent.as_view(), name='forget_password'),
     path('vendor/verify-fortget-otp/', VerifyOTPView.as_view(), name='forget_Pass_verify_otp'),
     path('vendor/change-password/', ChangePasswordView.as_view(), name='change_password'),
-    path('vendor/profile/', VendorProfileAPIView.as_view(), name='vendor-profile')
+    path('vendor/profile/', VendorProfileAPIView.as_view(), name='vendor-profile'),
+    path('vendor/create_event/', CreateEventView.as_view(), name='create_event'),
+    path('vendor/events/<int:event_id>/', VendorEventDetailView.as_view(), name='vendor_event_detail'),
+    path('vendor/ticket-types/', TicketTypeListCreateAPIView.as_view(), name='ticket_type_list_create'),
+    path('vendor/ticket-types/<int:pk>/', TicketTypeDetailUpdateAPIView.as_view(), name='ticket_type_detail_update'),
 ]

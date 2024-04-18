@@ -24,9 +24,8 @@ class CustomUser(AbstractBaseUser,PermissionsMixin):
     date_joined = models.DateTimeField(auto_now_add=True)
     last_login  = models.DateTimeField(auto_now=True)
     is_staff = models.BooleanField(default=False) 
-    is_vendor = models.BooleanField(default=False) 
+    is_vendor = models.BooleanField(default=False)
 
-    # vendor_id = 
    
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = ['email']
@@ -40,6 +39,74 @@ class CustomUser(AbstractBaseUser,PermissionsMixin):
             return self.username
         else:
             return str(self.id)  
+
+
+class Vendor(models.Model):
+    ACCOUNT_TYPE_CHOICES = [
+        ('current', 'Current Account'),
+        ('saving', 'Savings Account'),
+        ('joint', 'Joint Account'),
+    ]
+
+    organizer_name = models.CharField(max_length=255, unique=True)
+    pan_card_number = models.CharField(max_length=20, unique=True)
+    address = models.TextField()
+    GSTIN = models.BooleanField(default=False)
+    ITR = models.BooleanField(default=False)
+    contact_name = models.CharField(max_length=255)
+    benificiary_name = models.CharField(max_length=255)
+    account_type = models.CharField(max_length=100, choices=ACCOUNT_TYPE_CHOICES)
+    bank_name = models.CharField(max_length=255)
+    account_number = models.CharField(max_length=50, unique=True)
+    IFSC_code = models.CharField(max_length=20)
+    user = models.OneToOneField('CustomUser', on_delete=models.CASCADE, null=True, blank=True)
+
+
+    def __str__(self):
+        return self.organizer_name
+    
+from django.contrib.auth.hashers import make_password
+
+class VendorManager(models.Manager):
+    def create_vendor_user(self, vendor_data, password):
+        """
+        Creates and saves a Vendor and CustomUser with the given data.
+        """
+        if not vendor_data.get('email'):
+            raise ValueError('The Email field must be set')
+        
+        email = vendor_data.pop('email')
+        
+        # Extract vendor-specific data
+        vendor_specific_data = {
+            'organizer_name': vendor_data.pop('organizer_name'),
+            'pan_card_number': vendor_data.pop('pan_card_number'),
+            'address': vendor_data.pop('address'),
+            'contact_name': vendor_data.pop('contact_name'),
+            'benificiary_name': vendor_data.pop('benificiary_name'),
+            'account_type': vendor_data.pop('account_type'),
+            'bank_name': vendor_data.pop('bank_name'),
+            'account_number': vendor_data.pop('account_number'),
+            'IFSC_code': vendor_data.pop('IFSC_code'),
+        }
+        
+        # Create Vendor
+        vendor = Vendor.objects.create(**vendor_specific_data)
+        
+        # Hashing password
+        
+        
+        # Create CustomUser
+        user = CustomUser.objects.create_vendor_user_manager(email=email, password=password, **vendor_data)
+        user.is_vendor = True
+        user.save()
+    
+        
+        # Associate user with vendor
+        vendor.user = user
+        vendor.save()
+        return user, vendor
+    
     
 
 class PendingUser(models.Model):
@@ -50,6 +117,12 @@ class PendingUser(models.Model):
     otp = models.CharField(max_length=6)
     expiry_time = models.DateTimeField()
     email= models.EmailField(max_length=255, null=True)
+
+
+
+
+
+
 
     
 

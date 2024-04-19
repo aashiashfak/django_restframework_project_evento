@@ -15,7 +15,6 @@ class TicketTypeSerializer(serializers.ModelSerializer):
         fields = ['id', 'type_name', 'ticket_image', 'price', 'count', 'sold_count', 'event']
 
 
-
 class EventCreateSerializer(serializers.Serializer):
     venue = serializers.CharField(max_length=255, required=True)
     location = serializers.CharField(max_length=255, required=True)
@@ -52,6 +51,12 @@ class EventCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError("At least one category must be provided.")
         return value
     
+    def validate_location(self, value):
+        try:
+            Location.objects.get(name=value)
+        except Location.DoesNotExist:
+            raise serializers.ValidationError(f"Location '{value}' does not exist.")
+        return value
     
 
     def create(self, validated_data):
@@ -64,8 +69,8 @@ class EventCreateSerializer(serializers.Serializer):
         # Get or create venue
         venue, _ = Venue.objects.get_or_create(name=venue_name)
 
-        # Get or create location
-        location, _ = Location.objects.get_or_create(name=location_name)
+        # Get location
+        location = Location.objects.get(name=location_name)
 
         # Replace venue and location with venue_name and location_name respectively
         validated_data['venue'] = venue
@@ -124,10 +129,12 @@ class EventUpdateSerializer(serializers.Serializer):
         end_date = attrs.get('end_date')
         location_name = attrs.get('location')
 
-        # Check if location exists or create a new one
         if location_name:
-            location, _ = Location.objects.get_or_create(name=location_name)
-            attrs['location'] = location
+            try:
+                location = Location.objects.get(name=location_name)
+                attrs['location'] = location
+            except Location.DoesNotExist:
+                raise serializers.ValidationError(f"Location '{location_name}' does not exist.")
 
         if Venue_name:
             venue, _ = Location.objects.get_or_create(name=Venue_name)

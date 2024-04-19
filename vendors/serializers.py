@@ -83,13 +83,6 @@ class VendorSerializer(serializers.ModelSerializer):
 CustomUser = get_user_model()
 
 class VendorLoginSerializer(serializers.Serializer):
-    """
-    Serializer for vendor login.
-    This serializer validates vendor credentials for login.
-    Validates the provided credentials and generates 
-    JWT tokens if validation succeeds.
-    """
-
     email = serializers.EmailField(max_length=150)
     password = serializers.CharField(max_length=128, write_only=True)
 
@@ -98,28 +91,32 @@ class VendorLoginSerializer(serializers.Serializer):
         password = data.get('password')
 
         try:
-            vendor = CustomUser.objects.get(email=email)
+            custom_user = CustomUser.objects.get(email=email)
         except CustomUser.DoesNotExist:
-            raise serializers.ValidationError(
-                {'error': 'Vendor with this email does not exist'}
-            )
+            raise serializers.ValidationError({'error': 'Vendor with this email does not exist'})
 
-        if not check_password(password, vendor.password):
+        if not check_password(password, custom_user.password):
             raise serializers.ValidationError({'error': 'Invalid email or password'})
 
-        if not vendor.is_vendor:
+        if not custom_user.is_vendor:
             raise serializers.ValidationError(constants.INVALID_CREDENTIALS_ERROR)
 
-        access_token = RefreshToken.for_user(vendor)
-        refresh_token = RefreshToken.for_user(vendor)
+        try:
+            vendor = custom_user.vendor_details  # Access the Vendor object associated with the CustomUser
+        except Vendor.DoesNotExist:
+            raise serializers.ValidationError({'error': 'Vendor profile not found'})
+
+        access_token = RefreshToken.for_user(custom_user)
+        refresh_token = RefreshToken.for_user(custom_user)
         refresh_token_exp = timezone.now() + timezone.timedelta(days=10)
-        vendor_serializer = VendorSerializer(vendor.vendor)  # Assuming vendor instance has vendor field
+
+        vendor_serializer = VendorSerializer(vendor)
 
         return {
             "access_token": str(access_token.access_token),
             "refresh_token": str(refresh_token),
-            "refresh_token_expiry": refresh_token_exp.isoformat(),  
-            "user": vendor_serializer.data,  
+            "refresh_token_expiry": refresh_token_exp.isoformat(),
+            "user": vendor_serializer.data,
             "message": constants.USER_LOGGED_IN_SUCCESSFULLY,
         }
 

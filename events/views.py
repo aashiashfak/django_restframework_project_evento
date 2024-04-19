@@ -28,10 +28,35 @@
 from rest_framework import generics
 from rest_framework import filters
 from .models import Event
-from .serializers import EventSerializer
+from .serializers import (
+    EventSerializer,
+)
+from customadmin.serializers import LocationSerializer
+from customadmin.models import Location
+
+
+
+
+class LocationListAPIView(generics.ListAPIView):
+    queryset = Location.objects.all()
+    serializer_class = LocationSerializer
+
+
+class EventByLocationAPIView(generics.ListAPIView):
+    serializer_class = EventSerializer
+
+    def get_queryset(self):
+        location_id = self.request.query_params.get('location_id')
+
+        if location_id:
+            return Event.objects.filter(location_id=location_id)
+        else:
+            return Event.objects.none() 
+
 
 class EventListAPIView(generics.ListAPIView):
     queryset = Event.objects.all()
     serializer_class = EventSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['event_name', 'venue__name', 'location__name', 'categories__name']
+

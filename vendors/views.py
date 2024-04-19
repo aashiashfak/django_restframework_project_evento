@@ -289,8 +289,16 @@ class ChangePasswordView(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
 
-              
-# from django.http import Http404
+
+from django.shortcuts import get_object_or_404        
+from events.models import Event,TicketType
+from events.serializers import (
+    EventCreateSerializer,
+    EventRetrieveSerializer,
+    EventUpdateSerializer,
+    TicketTypeSerializer
+
+)
 
  
 
@@ -332,15 +340,6 @@ class VendorProfileAPIView(APIView):
         
 
 
-from django.shortcuts import get_object_or_404        
-from events.models import Event,TicketType
-from events.serializers import (
-    EventCreateSerializer,
-    EventRetrieveSerializer,
-    EventUpdateSerializer,
-    TicketTypeSerializer
-
-)
 
 class CreateEventView(APIView):
     permission_classes = [IsAuthenticated, IsVendor]

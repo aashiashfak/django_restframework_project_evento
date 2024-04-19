@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import Event, TicketType, Venue,Ticket
 from customadmin.models import Category, Location
 from django.utils.translation import gettext_lazy as _
+from accounts.models import Vendor, CustomUser
 
 
 class TicketTypeSerializer(serializers.ModelSerializer):
@@ -166,6 +167,38 @@ class EventUpdateSerializer(serializers.Serializer):
             instance.categories.add(category)
 
         return instance
+
+
+
+class EventSerializer(serializers.ModelSerializer):
+    organizer_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Event
+        fields = ['id', 'event_name', 'categories', 'start_date', 'end_date', 'venue', 'location', 'event_img_1',
+                  'event_img_2', 'event_img_3', 'about', 'instruction', 'terms_and_conditions', 'vendor', 'organizer_name']
+
+    def get_organizer_name(self, obj):
+        try:
+            Custom_User = obj.vendor
+            if Custom_User:
+                vendor = Custom_User.vendor_details
+                if vendor:
+                    return vendor.organizer_name
+        except Vendor.DoesNotExist:
+            return None
+        return None
+
+
+
+
+
+
+
+
+
+
+
 
 
 

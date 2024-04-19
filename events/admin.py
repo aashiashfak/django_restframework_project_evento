@@ -4,7 +4,7 @@ from .models import Event, TicketType, Venue, Ticket
 
 @admin.register(Venue)
 class VenueAdmin(admin.ModelAdmin):
-    list_display = ['name']
+    list_display = ['id', 'name']
     search_fields = ['name']
 
 
@@ -25,7 +25,7 @@ class TicketTypeInline(admin.TabularInline):
 
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
-    list_display = ['id', 'event_name', 'start_date', 'end_date', 'venue', 'vendor', 'display_categories']
+    list_display = ['id', 'event_name', 'start_date', 'end_date', 'venue', 'location', 'vendor', 'display_categories']
     search_fields = ['event_name', 'venue__name', 'vendor__username']
     list_filter = ['vendor']
     inlines = [TicketTypeInline]

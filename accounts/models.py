@@ -59,7 +59,7 @@ class Vendor(models.Model):
     bank_name = models.CharField(max_length=255)
     account_number = models.CharField(max_length=50, unique=True)
     IFSC_code = models.CharField(max_length=20)
-    user = models.OneToOneField('CustomUser', on_delete=models.CASCADE, null=True, blank=True)
+    user = models.OneToOneField('CustomUser', on_delete=models.CASCADE, null=True, blank=True,related_name='vendor_details')
 
 
     def __str__(self):

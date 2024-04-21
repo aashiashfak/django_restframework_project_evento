@@ -30,13 +30,18 @@ from rest_framework import filters
 from .models import Event , TicketType
 from .serializers import (
     EventSerializer,
-    TicketTypeSerializer
+    TicketTypeSerializer,
+    TicketBookingSerializer
 )
 from customadmin.serializers import LocationSerializer
 from customadmin.models import Location
 from .filters import EventFilter
 from django_filters.rest_framework import DjangoFilterBackend
-
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
+from rest_framework import status
+from django.http import Http404 
 
 
 
@@ -81,3 +86,26 @@ class TicketTypeListAPIView(generics.ListAPIView):
             return TicketType.objects.select_related('event').filter(event_id=event_id)
         else:
             return TicketType.objects.none()
+        
+
+class TicketBookingAPIView(APIView):
+    
+    def post(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            raise PermissionDenied("You need to be logged in to book tickets.")
+
+        ticket_id = kwargs.get('ticket_id')  
+
+        try:
+            ticket_type = TicketType.objects.get(pk=ticket_id)
+        except TicketType.DoesNotExist:
+             raise Http404("Ticket type not found.")
+
+        serializer = TicketBookingSerializer(data=request.data, context={'ticket_type': ticket_type, 'request': request})
+
+        if serializer.is_valid():
+            serializer.save()
+            
+            return Response({"message": "Ticket booked successfully."}, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -1,3 +1,4 @@
+import datetime
 from django.db import models
 from customadmin.models import Location, Category
 import uuid
@@ -19,21 +20,31 @@ class TicketType(models.Model):
     def __str__(self):
         return self.type_name
 
+
 class Ticket(models.Model):
-    event = models.ForeignKey(
-        'Event',
-        on_delete=models.CASCADE,
-        related_name='event_tickets'
-    )
     ticket_type = models.ForeignKey(
         TicketType,
         on_delete=models.CASCADE,
         related_name='tickets'
     )
-    unique_code = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='tickets')
+    ticket_price = models.DecimalField(max_digits=10, decimal_places=2)
+    ticket_count = models.PositiveIntegerField(default=1)
+    qr_code = models.ImageField(upload_to='qr_codes/', null=True, blank=True)
+    booking_date = models.DateTimeField(auto_now_add=True)
+    TICKET_STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('canceled', 'Canceled'),
+        ('used', 'Used'),
+    ]
+    ticket_status = models.CharField(max_length=10, choices=TICKET_STATUS_CHOICES, default='active')
 
     def __str__(self):
-        return f"{self.ticket_type.type_name} - {self.unique_code}"
+        return f"Ticket for {self.ticket_type.event.event_name}"
+    
+
+
+    
     
 class Event(models.Model):
 

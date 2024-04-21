@@ -1,9 +1,10 @@
+import datetime
 from rest_framework import serializers
-from .models import Event, TicketType, Venue,Ticket
+from .models import Event, TicketType, Venue, Ticket
 from customadmin.models import Category, Location
 from django.utils.translation import gettext_lazy as _
 from accounts.models import Vendor, CustomUser
-
+from .utilities import generate_qr_code
 
 class TicketTypeSerializer(serializers.ModelSerializer):
     sold_count = serializers.ReadOnlyField()
@@ -205,10 +206,108 @@ class EventSerializer(serializers.ModelSerializer):
 
 
 
+from django.db import transaction
+
+class TicketBookingSerializer(serializers.ModelSerializer):
+    ticket_count = serializers.IntegerField(min_value=1, required=True)
+
+    class Meta:
+        model = Ticket
+        fields = ['ticket_count']
+
+    def validate(self, attrs):
+        ticket_count = attrs['ticket_count']
+        ticket_type = self.context['ticket_type']
+
+        # Check if there are enough available tickets before booking
+        available_tickets = ticket_type.count - ticket_type.sold_count
+        if ticket_count > available_tickets:
+            raise serializers.ValidationError("Not enough tickets available for booking.")
+        
+        if ticket_count > 5:
+            raise serializers.ValidationError("You can only book up to 5 tickets.")
+
+        return attrs
+
+    @transaction.atomic
+    def create(self, validated_data):
+        ticket_type = self.context['ticket_type']
+        user = self.context['request'].user
+
+        # Calculate the ticket price based on ticket type and count
+        ticket_count = validated_data['ticket_count']
+        ticket_price = ticket_type.price * ticket_count
+
+        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
+        qr_data = f"Ticket ID: {ticket_type.id}-{user.id}-{timestamp}"
+
+        # Create the ticket instance
+        ticket = Ticket.objects.create(
+            ticket_type=ticket_type,
+            user=user,
+            ticket_price=ticket_price,
+            ticket_count=ticket_count,
+            qr_code=generate_qr_code(qr_data)
+        )
+
+        # Update the sold count of the ticket type
+        ticket_type.sold_count += ticket_count
+        ticket_type.save()
+
+        return ticket
 
 
 
 
+# from .utilities import generate_qr_code
+
+# class TicketBookingSerializer(serializers.ModelSerializer):
+#     ticket_count = serializers.IntegerField(min_value=1, required=True)
+
+#     class Meta:
+#         model = Ticket
+#         fields = ['ticket_count']
+
+#     def validate(self, attrs):
+#         ticket_count = attrs['ticket_count']
+#         ticket_type = self.context['ticket_type']
+
+#         # Check if there are enough available tickets before booking
+#         available_tickets = ticket_type.count - ticket_type.sold_count
+#         if ticket_count > available_tickets:
+#             raise serializers.ValidationError("Not enough tickets available for booking.")
+        
+#         if ticket_count > 5:
+#             raise serializers.ValidationError("You can only book up to 5 tickets.")
+
+#         return attrs
+
+#     def create(self, validated_data):
+#         ticket_type = self.context['ticket_type']
+#         user = self.context['request'].user
+
+#         # Calculate the ticket price based on ticket type and count
+#         ticket_count = validated_data['ticket_count']
+#         ticket_price = ticket_type.price * ticket_count
+
+#         qr_data = f"Ticket ID: {ticket_type}-{user}"
+
+#         # Create the ticket instance
+
+#         ticket = Ticket.objects.create(
+#             ticket_type=ticket_type,
+#             user=user,
+#             ticket_price=ticket_price,
+#             ticket_count=ticket_count,
+#             qr_code = generate_qr_code(qr_data)
+
+#         )
+
+#         # Update the sold count of the ticket type
+#         ticket_type.sold_count += ticket_count
+#         ticket_type.save()
+
+#         return ticket
 
 
 

@@ -15,9 +15,9 @@ class TicketTypeAdmin(admin.ModelAdmin):
 
 @admin.register(Ticket)
 class TicketAdmin(admin.ModelAdmin):
-    list_display = ['ticket_type', 'event', 'unique_code']
+    list_display = ['ticket_type']
     search_fields = ['ticket_type__type_name', 'event__event_name']
-    list_filter = ['ticket_type', 'event']
+    list_filter = ['ticket_type']
 
 class TicketTypeInline(admin.TabularInline):
     model = TicketType

@@ -7,3 +7,11 @@ class IsVendor(permissions.BasePermission):
 
     def has_permission(self, request, view):
         return request.user.is_authenticated and request.user.is_vendor
+
+class IsSuperuser(permissions.BasePermission):
+    """
+    Custom permission to check if the authenticated user is a Customsuperuser.
+    """
+
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.is_superuser 

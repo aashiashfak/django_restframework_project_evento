@@ -77,6 +77,7 @@ class VendorSerializer(serializers.ModelSerializer):
     """
     user = CustomUserSerializer(read_only=True)
     class Meta:
+
         model = Vendor
         fields = '__all__'
 
@@ -149,11 +150,6 @@ class ChangeForgetPasswordSerializer(serializers.Serializer):
         return data
     
 
-
-
-
-
-
 class VendorProfileSerializer(serializers.ModelSerializer):
     organizer_name = serializers.CharField(required=False)
     pan_card_number = serializers.CharField(required=False)
@@ -173,19 +169,19 @@ class VendorProfileSerializer(serializers.ModelSerializer):
         )
 
     def validate_organizer_name(self, value):
-        vendor = self.context['request'].user.vendor
+        vendor = self.context['request'].user.vendor_details
         if Vendor.objects.exclude(pk=vendor.pk).filter(organizer_name=value).exists():
             raise serializers.ValidationError({"organizer_name": "This organizer name is already in use."})
         return value
 
     def validate_pan_card_number(self, value):
-        vendor = self.context['request'].user.vendor
+        vendor = self.context['request'].user.vendor_details
         if Vendor.objects.exclude(pk=vendor.pk).filter(pan_card_number=value).exists():
             raise serializers.ValidationError({"pan_card_number": "This PAN card number is already in use."})
         return value
 
     def validate_account_number(self, value):
-        vendor = self.context['request'].user.vendor
+        vendor = self.context['request'].user.vendor_details
         if Vendor.objects.exclude(pk=vendor.pk).filter(account_number=value).exists():
             raise serializers.ValidationError({"account_number": "This account number is already in use."})
         return value

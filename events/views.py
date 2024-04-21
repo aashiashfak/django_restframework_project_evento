@@ -27,12 +27,15 @@
 
 from rest_framework import generics
 from rest_framework import filters
-from .models import Event
+from .models import Event , TicketType
 from .serializers import (
     EventSerializer,
+    TicketTypeSerializer
 )
 from customadmin.serializers import LocationSerializer
 from customadmin.models import Location
+from .filters import EventFilter
+from django_filters.rest_framework import DjangoFilterBackend
 
 
 
@@ -49,14 +52,32 @@ class EventByLocationAPIView(generics.ListAPIView):
         location_id = self.request.query_params.get('location_id')
 
         if location_id:
-            return Event.objects.filter(location_id=location_id)
+            return Event.objects.filter(location=location_id)
         else:
             return Event.objects.none() 
+        
+
+class EventDetailAPIView(generics.RetrieveAPIView):
+    queryset = Event.objects.all()
+    serializer_class = EventSerializer
 
 
 class EventListAPIView(generics.ListAPIView):
     queryset = Event.objects.all()
     serializer_class = EventSerializer
-    filter_backends = [filters.SearchFilter]
+    filterset_class = EventFilter
+    filter_backends = [filters.SearchFilter,DjangoFilterBackend]
     search_fields = ['event_name', 'venue__name', 'location__name', 'categories__name']
 
+
+
+class TicketTypeListAPIView(generics.ListAPIView):
+    serializer_class = TicketTypeSerializer
+
+    def get_queryset(self):
+        event_id = self.kwargs.get('event_id')
+
+        if event_id:
+            return TicketType.objects.select_related('event').filter(event_id=event_id)
+        else:
+            return TicketType.objects.none()

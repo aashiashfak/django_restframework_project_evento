@@ -9,6 +9,8 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework import generics, mixins
 from .models import Category,Location
+from accounts.permissions import IsSuperuser
+from rest_framework.permissions import IsAuthenticated
 
 class SuperUserLoginView(APIView):
     """
@@ -33,6 +35,8 @@ class SuperUserLoginView(APIView):
         
         
 class CategoryListCreateAPIView(generics.ListCreateAPIView):
+
+    permission_classes=[IsSuperuser,IsAuthenticated]
     serializer_class = CategorySerializer
     queryset = Category.objects.all()
 
@@ -43,6 +47,8 @@ class CategoryListCreateAPIView(generics.ListCreateAPIView):
         return self.create(request)
     
 class CategoryRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+
+    permission_classes=[IsSuperuser,IsAuthenticated]
     serializer_class = CategorySerializer
     queryset = Category.objects.all()
     lookup_field = 'id'
@@ -58,6 +64,8 @@ class CategoryRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView
 
 
 class LocationListCreateAPIView(generics.ListCreateAPIView):
+
+    permission_classes=[IsSuperuser,IsAuthenticated]
     serializer_class = LocationSerializer
     queryset = Location.objects.all()
 
@@ -68,6 +76,8 @@ class LocationListCreateAPIView(generics.ListCreateAPIView):
         return self.create(request)
     
 class LocationRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+
+    permission_classes=[IsSuperuser,IsAuthenticated]
     serializer_class = LocationSerializer
     queryset = Location.objects.all()
     lookup_field = 'id'

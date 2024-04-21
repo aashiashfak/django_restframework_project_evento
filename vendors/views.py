@@ -312,7 +312,8 @@ class VendorProfileAPIView(APIView):
         """
         Retrieve the profile information of the authenticated vendor.
         """
-        vendor = getattr(request.user, 'vendor', None)
+        vendor = getattr(request.user, 'vendor_details', None)
+        print(vendor)
         
         if not vendor:
             return Response({'error': 'Vendor profile does not exist'}, status=status.HTTP_404_NOT_FOUND)
@@ -325,7 +326,8 @@ class VendorProfileAPIView(APIView):
         """
         Update the profile information of the authenticated vendor.
         """
-        vendor = getattr(request.user, 'vendor', None)
+        vendor = getattr(request.user, 'vendor_details', None)
+        print(vendor)
         
         if not vendor:
             return Response({'error': 'Vendor profile does not exist'}, status=status.HTTP_404_NOT_FOUND)
@@ -346,7 +348,7 @@ class CreateEventView(APIView):
 
     def get(self, request):
         events = Event.objects.filter(vendor=request.user)
-        serializer = EventCreateSerializer(events, many=True)
+        serializer = EventRetrieveSerializer(events, many=True)
         return Response(serializer.data)
 
     def post(self, request):
@@ -377,7 +379,7 @@ class VendorEventDetailView(APIView):
         return Response(serializer.data)
 
     def put(self, request, event_id):
-        event = get_object_or_404(Event, pk=event_id)
+        event = get_object_or_404(Event, pk=event_id,vendor=request.user)
             
         serializer = EventUpdateSerializer(instance=event, data=request.data, partial=True)
         if serializer.is_valid():

@@ -27,6 +27,4 @@ urlpatterns = [
     path('update-phone/', UpdatePhoneAPIView.as_view(), name='update-phone'),
     path('verify-update-phone-otp/', VerifyUpdatePhoneOTPView.as_view(), name='verify-phone-update-otp'),
     
-
-
 ]

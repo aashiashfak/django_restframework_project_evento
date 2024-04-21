@@ -49,7 +49,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-     #my apps
+    #my apps
     'accounts',
     'vendors',
     'customadmin',
@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     #third party
     'rest_framework',
     'debug_toolbar',
+    'django_filters'
 
 
     
@@ -158,7 +159,7 @@ GOOGLE_OAUTH2_CLIENT_SECRETS_JSON ='C:/Users/h/Desktop/New folder/client_secret_
 #mobile_login variables
 SPRING_EDGE_API_KEY=os.getenv('SPRING_EDGE_API_KEY')
 SPRING_EDGE_SENDER_ID=os.getenv('SPRING_EDGE_SENDER_ID')
-OTP_EXPIRY_MINUTES=1
+OTP_EXPIRY_MINUTES=2
 SMS_API_KEY=os.getenv('SMS_API_KEY')
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

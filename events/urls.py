@@ -3,10 +3,15 @@ from .views import (
     EventListAPIView,
     LocationListAPIView,
     EventByLocationAPIView,
+    EventDetailAPIView,
+    TicketTypeListAPIView
 )
 
 urlpatterns = [
     path('locations/', LocationListAPIView.as_view(), name='location-list'),
     path('by_location/', EventByLocationAPIView.as_view(), name='events-by-location'),
-    path('listAllEvents/', EventListAPIView.as_view(), name='event-list'),
+    path('list_all_events/', EventListAPIView.as_view(), name='event-list'),
+    path('event_details/<int:pk>/', EventDetailAPIView.as_view(), name='event-detail'),
+    path('event/<int:event_id>/tickets/', TicketTypeListAPIView.as_view(), name='event_tickets'),
+
 ]

@@ -31,14 +31,23 @@ class Ticket(models.Model):
         related_name='tickets'
     )
     unique_code = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+
     def __str__(self):
         return f"{self.ticket_type.type_name} - {self.unique_code}"
     
 class Event(models.Model):
+
+    STATUS_CHOICES = (
+        ('active', 'Active'),
+        ('completed', 'Completed'),
+        ('disabled', 'Disabled'),
+    )
+
     event_name = models.CharField(max_length=255)
     categories = models.ManyToManyField(Category, related_name='events')
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
+    time = models.TimeField(default='17:00')
     venue = models.ForeignKey(
         Venue,
         on_delete=models.SET_NULL,
@@ -58,6 +67,7 @@ class Event(models.Model):
     about = models.TextField()
     instruction = models.TextField(null=True, blank=True)
     terms_and_conditions = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
     vendor = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='events')
 
     def __str__(self):

@@ -73,6 +73,7 @@ class EmailOTPRequestView(APIView):
                 request.session['email'] = email
                 username = email.split('@')[0] 
                 otp = generate_otp()
+                print(f"your otp is {otp}")
                 expiry_time = timezone.now() + timedelta(
                     minutes=settings.OTP_EXPIRY_MINUTES
                 )
@@ -126,6 +127,7 @@ class OTPVerificationEmailView(APIView):
                     pending_user = PendingUser.objects.get(email=email, otp=otp)
                     if pending_user.expiry_time >= timezone.now():
                         print(timezone.now())
+                        print(otp)
 
                         user = create_email_user(email)
                         pending_user.delete()

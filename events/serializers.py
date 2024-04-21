@@ -20,6 +20,7 @@ class EventCreateSerializer(serializers.Serializer):
     location = serializers.CharField(max_length=255, required=True)
     categories = serializers.ListSerializer(child=serializers.CharField())
     event_name = serializers.CharField(max_length=255)
+    time = serializers.TimeField(required=True)
     start_date = serializers.DateTimeField()
     end_date = serializers.DateTimeField()
     event_img_1 = serializers.ImageField(required=False, allow_null=True)
@@ -29,6 +30,7 @@ class EventCreateSerializer(serializers.Serializer):
     instruction = serializers.CharField(required=False, allow_blank=True)
     terms_and_conditions = serializers.CharField()
     ticket_types = serializers.ListSerializer(child=TicketTypeSerializer())
+
    
 
     def validate(self, attrs):
@@ -114,12 +116,14 @@ class EventUpdateSerializer(serializers.Serializer):
     event_name = serializers.CharField(max_length=255, required=False)
     start_date = serializers.DateTimeField(required=False)
     end_date = serializers.DateTimeField(required=False)
+    time = serializers.TimeField(required=True)
     event_img_1 = serializers.ImageField(required=False)
     event_img_2 = serializers.ImageField(required=False, allow_null=True)
     event_img_3 = serializers.ImageField(required=False, allow_null=True)
     about = serializers.CharField(required=False)
     instruction = serializers.CharField(required=False, allow_blank=True)
     terms_and_conditions = serializers.CharField(required=False)
+    status = serializers.ChoiceField(choices=Event.STATUS_CHOICES)
     ticket_types = serializers.ListSerializer(child=TicketTypeSerializer())
 
     def validate(self, attrs):
@@ -165,6 +169,7 @@ class EventUpdateSerializer(serializers.Serializer):
         instance.about = validated_data.get('about', instance.about)
         instance.instruction = validated_data.get('instruction', instance.instruction)
         instance.terms_and_conditions = validated_data.get('terms_and_conditions', instance.terms_and_conditions)
+        instance.status = validated_data.get('status', instance.status) 
         instance.save()
 
         # Clear existing categories and add new ones
@@ -179,11 +184,13 @@ class EventUpdateSerializer(serializers.Serializer):
 
 class EventSerializer(serializers.ModelSerializer):
     organizer_name = serializers.SerializerMethodField()
+    categories = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), many=True)
+    ticket_types = TicketTypeSerializer(many=True, read_only=True)
 
     class Meta:
         model = Event
         fields = ['id', 'event_name', 'categories', 'start_date', 'end_date', 'venue', 'location', 'event_img_1',
-                  'event_img_2', 'event_img_3', 'about', 'instruction', 'terms_and_conditions', 'vendor', 'organizer_name']
+                  'event_img_2', 'event_img_3', 'about', 'instruction', 'terms_and_conditions', 'vendor', 'organizer_name', 'ticket_types']
 
     def get_organizer_name(self, obj):
         try:

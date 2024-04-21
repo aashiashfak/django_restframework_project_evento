@@ -257,6 +257,15 @@ class TicketBookingSerializer(serializers.ModelSerializer):
         return ticket
 
 
+class TicketSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ticket
+        fields = '__all__'
+       
+
+
+
+
 
 
 # from .utilities import generate_qr_code

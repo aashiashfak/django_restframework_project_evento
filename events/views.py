@@ -25,6 +25,7 @@
 #         return Event.objects.filter(vendor=self.request.user)
 
 
+
 from rest_framework import generics
 from rest_framework import filters
 from .models import Event , TicketType
@@ -42,6 +43,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 from rest_framework import status
 from django.http import Http404 
+from django.utils import timezone
 
 
 
@@ -54,7 +56,7 @@ class EventByLocationAPIView(generics.ListAPIView):
     serializer_class = EventSerializer
 
     def get_queryset(self):
-        location_id = self.request.query_params.get('location_id')
+        location_id =  self.kwargs.get('location_id')
 
         if location_id:
             return Event.objects.filter(location=location_id)
@@ -68,11 +70,16 @@ class EventDetailAPIView(generics.RetrieveAPIView):
 
 
 class EventListAPIView(generics.ListAPIView):
-    queryset = Event.objects.all()
+    
     serializer_class = EventSerializer
     filterset_class = EventFilter
     filter_backends = [filters.SearchFilter,DjangoFilterBackend]
     search_fields = ['event_name', 'venue__name', 'location__name', 'categories__name']
+
+    def get_queryset(self):
+        queryset = Event.objects.filter(status='active')
+
+        return queryset
 
 
 
@@ -105,7 +112,7 @@ class TicketBookingAPIView(APIView):
 
         if serializer.is_valid():
             serializer.save()
-            
+
             return Response({"message": "Ticket booked successfully."}, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -10,6 +10,7 @@ from .utilities import (
 from .models import CustomUser,PendingUser
 from django.core.validators import EmailValidator
 from rest_framework.exceptions import PermissionDenied
+from events.serializers import TicketSerializer
 
 
 
@@ -104,10 +105,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     username = serializers.CharField(required=False)
     profile_picture = serializers.ImageField(required=False, allow_null=True)
+    tickets = TicketSerializer(many=True, read_only=True)
 
     class Meta:
         model = CustomUser
-        fields = ('username', 'email', 'phone_number', 'profile_picture')
+        fields = ('username', 'email', 'phone_number', 'profile_picture', 'tickets')
+        read_only_fields = ('tickets',)
 
     def validate_username(self, value):
         user = self.context['request'].user

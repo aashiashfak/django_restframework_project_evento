@@ -102,6 +102,9 @@ class CustomUserEmailSerializer(serializers.ModelSerializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the user profile information.
+    """
 
     username = serializers.CharField(required=False)
     profile_picture = serializers.ImageField(required=False, allow_null=True)
@@ -113,12 +116,18 @@ class UserProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ('tickets',)
 
     def validate_username(self, value):
+        """
+        Validate the username to ensure it's unique among other users.
+        """
         user = self.context['request'].user
         if CustomUser.objects.exclude(pk=user.pk).filter(username=value).exists():
             raise serializers.ValidationError({"username": "This username is already in use."})
         return value
 
     def update(self, instance, validated_data):
+        """
+        Update the user's profile information.
+        """
         instance.username = validated_data.get('username', instance.username)
         if 'profile_picture' in validated_data:
             instance.profile_picture = validated_data['profile_picture']
@@ -128,9 +137,15 @@ class UserProfileSerializer(serializers.ModelSerializer):
     
     
 class UpdateEmailSerializer(serializers.Serializer):
+    """
+    Serializer for updating user email address.
+    """
     email = serializers.EmailField(validators=[EmailValidator()])
 
     def validate_email(self, value):
+        """
+        Validate the new email address.
+        """
         user = self.context['request'].user
     
         if user.email == value:
@@ -143,6 +158,9 @@ class UpdateEmailSerializer(serializers.Serializer):
 
 
 class VerifyUpdateEmailOTPSerializer(serializers.Serializer):
+    """
+    Serializer for verifying and updating user email address with OTP.
+    """
     otp = serializers.CharField(max_length=6)
 
     def validate_otp(self, value):
@@ -185,6 +203,9 @@ class VerifyUpdateEmailOTPSerializer(serializers.Serializer):
 
 
 class UpdatePhoneSerializer(serializers.Serializer):
+    """
+    Serializer for updating user phone number.
+    """
     phone_number = serializers.CharField(max_length=15)
 
     def validate_phone_number(self, value):
@@ -205,6 +226,9 @@ class UpdatePhoneSerializer(serializers.Serializer):
 
 
 class VerifyUpdatePhoneOTPSerializer(serializers.Serializer):
+    """
+    Serializer for verifying and updating user phone number with OTP.
+    """
     otp = serializers.CharField(max_length=6)
 
     def validate_otp(self, value):

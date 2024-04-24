@@ -93,7 +93,7 @@ class VendorManager(models.Manager):
         # Create Vendor
         vendor = Vendor.objects.create(**vendor_specific_data)
         
-        # Hashing password
+       
         
         
         # Create CustomUser

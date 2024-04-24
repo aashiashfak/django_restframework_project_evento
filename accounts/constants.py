@@ -13,3 +13,11 @@ FAILED_TO_SEND_OTP_ERROR = "Failed to send OTP. Please try again later."
 OTP_RESENT_SUCCESSFULLY = "OTP resent successfully"
 INVALID_CREDENTIALS_ERROR = "Invalid credentials"
 PASSWORDS_DO_NOT_MATCH_ERROR = "Passwords do not match"
+
+AUTHENTICATION_FAILED = 'Authentication failed'
+EMAIL_UPDATED_SUCCESSFULLY = 'Email updated successfully'
+PHONE_UPDATED_SUCCESSFULLY = 'Phone number updated successfully'
+
+CONTACT_INFO_NOT_FOUND_ERROR = 'Contact information not found'
+OTP_ALREADY_SENT_ERROR = 'OTP already sent. Please wait'
+SECONDS_TO_RESEND = 'seconds to resend.'

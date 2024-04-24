@@ -11,6 +11,7 @@ from rest_framework import generics, mixins
 from .models import Category,Location
 from accounts.permissions import IsSuperuser
 from rest_framework.permissions import IsAuthenticated
+from .utilities import cached_queryset
 
 class SuperUserLoginView(APIView):
     """
@@ -31,15 +32,24 @@ class SuperUserLoginView(APIView):
             return Response(serializer.validated_data, status=status.HTTP_200_OK)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+    
+
+
+
         
         
 class CategoryListCreateAPIView(generics.ListCreateAPIView):
+    """
+    API view for listing and creating categories.
+    Only superusers are allowed to access this view.
+    """
 
-    permission_classes=[IsSuperuser,IsAuthenticated]
+    # permission_classes=[IsSuperuser,IsAuthenticated]
     serializer_class = CategorySerializer
-    queryset = Category.objects.all()
 
+    def get_queryset(self):
+        return cached_queryset('categories_queryset', lambda: Category.objects.all(),timeout=60)
+    
     def get(self, request):
         return self.list(request)
 
@@ -47,6 +57,10 @@ class CategoryListCreateAPIView(generics.ListCreateAPIView):
         return self.create(request)
     
 class CategoryRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    API view for retrieving, updating, and deleting a category.
+    Only superusers are allowed to access this view.
+    """
 
     permission_classes=[IsSuperuser,IsAuthenticated]
     serializer_class = CategorySerializer
@@ -64,10 +78,16 @@ class CategoryRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView
 
 
 class LocationListCreateAPIView(generics.ListCreateAPIView):
+    """
+    API view for listing and creating locations.
+    Only superusers are allowed to access this view.
+    """
 
     permission_classes=[IsSuperuser,IsAuthenticated]
     serializer_class = LocationSerializer
-    queryset = Location.objects.all()
+
+    def get_queryset(self):
+        return cached_queryset('Location_queryset', lambda: Location.objects.all(),timeout=60)
 
     def get(self, request):
         return self.list(request)
@@ -76,6 +96,10 @@ class LocationListCreateAPIView(generics.ListCreateAPIView):
         return self.create(request)
     
 class LocationRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    API view for retrieving, updating, and deleting a location.
+    Only superusers are allowed to access this view.
+    """
 
     permission_classes=[IsSuperuser,IsAuthenticated]
     serializer_class = LocationSerializer

@@ -10,9 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
-from pathlib import Path
-
-
+from datetime import timedelta
 from pathlib import Path
 import os
 from dotenv import load_dotenv
@@ -109,6 +107,14 @@ DATABASES = {
     }
 }
 
+
+#Redis Cache 
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    }
+}
+
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
@@ -162,6 +168,9 @@ SPRING_EDGE_SENDER_ID=os.getenv('SPRING_EDGE_SENDER_ID')
 OTP_EXPIRY_MINUTES=2
 SMS_API_KEY=os.getenv('SMS_API_KEY')
 
+RAZORPAY_API_KEY=os.getenv('RAZORPAY_API_KEY')
+RAZORPAY_API_SECRET=os.getenv('RAZORPAY_API_SECRET')
+
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587  # Use 465 for SSL/TLS connection
@@ -182,3 +191,10 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     )
 }
+
+
+
+# SIMPLE_JWT = {
+#     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15), 
+#     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),     
+# }

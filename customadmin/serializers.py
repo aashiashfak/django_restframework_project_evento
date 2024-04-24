@@ -48,11 +48,17 @@ class SuperuserLoginSerializer(serializers.Serializer):
     
 
 class CategorySerializer(serializers.ModelSerializer):
+    """
+    Serializer for Category model.
+    """
     class Meta:
         model = Category
         fields = ['id', 'name', 'image']
 
 class LocationSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Location model.
+    """
     class Meta:
         model = Location
         fields = ['id', 'name']

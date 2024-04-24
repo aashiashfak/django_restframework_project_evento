@@ -36,11 +36,12 @@ class Ticket(models.Model):
         ('active', 'Active'),
         ('canceled', 'Canceled'),
         ('used', 'Used'),
+        ('pending','Pending')
     ]
-    ticket_status = models.CharField(max_length=10, choices=TICKET_STATUS_CHOICES, default='active')
+    ticket_status = models.CharField(max_length=10, choices=TICKET_STATUS_CHOICES, default='pending')
 
     def __str__(self):
-        return f"Ticket for {self.ticket_type.event.event_name}"
+        return f"Ticket for {self.user} for event {self.ticket_type.event.event_name}"
     
 
 
@@ -84,3 +85,10 @@ class Event(models.Model):
     def __str__(self):
         return self.event_name
 
+
+class Payment(models.Model):
+    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE)
+    order_id = models.CharField(max_length=255)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, default='pending')
+    order_date = models.DateTimeField(auto_now_add=True)

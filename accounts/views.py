@@ -362,7 +362,7 @@ class UserProfileAPIView(APIView):
             serializer = self.serializer_class(request.user, context={'request': request})
             return Response(serializer.data)
         except PermissionDenied:
-            return Response({'error': 'Authentication failed'}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({'error': constants.AUTHENTICATION_FAILED}, status=status.HTTP_401_UNAUTHORIZED)
 
     def put(self, request):
         """
@@ -376,7 +376,7 @@ class UserProfileAPIView(APIView):
             else:
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except PermissionDenied:
-            return Response({'error': 'Authentication failed'}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({'error': constants.AUTHENTICATION_FAILED}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 class UpdateEmailAPIView(APIView):
@@ -406,11 +406,11 @@ class UpdateEmailAPIView(APIView):
             try:
                 send_otp_email(email, request.user.username, pending_user.otp)
                 
-                return Response({"detail": "OTP sent successfully"}, status=status.HTTP_200_OK)
+                return Response({"detail":constants.OTP_SENT_SUCCESSFULLY}, status=status.HTTP_200_OK)
             
             except Exception as e:
                 pending_user.delete()
-                return Response({"error": "Failed to send OTP"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response({"error": constants.FAILED_TO_SEND_OTP_ERROR}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -427,7 +427,7 @@ class VerifyUpdateEmailOTPView(APIView):
         if serializer.is_valid():
             serializer.update(request.user, serializer.validated_data)
 
-            return Response({"message": "Email updated successfully"})
+            return Response({"message": constants.EMAIL_UPDATED_SUCCESSFULLY})
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -458,11 +458,11 @@ class UpdatePhoneAPIView(APIView):
             try:
                 send_otp(phone_number, pending_user.otp)
                 
-                return Response({"detail": "OTP sent successfully"}, status=status.HTTP_200_OK)
+                return Response({"detail": constants.OTP_SENT_SUCCESSFULLY}, status=status.HTTP_200_OK)
             
             except Exception as e:
                 pending_user.delete()
-                return Response({"error": "Failed to send OTP"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response({"error": constants.FAILED_TO_SEND_OTP_ERROR}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
@@ -479,6 +479,7 @@ class VerifyUpdatePhoneOTPView(APIView):
         if serializer.is_valid():
             serializer.update(request.user, serializer.validated_data)
 
-            return Response({"message": "Phone number updated successfully"})
+            return Response({"message": constants.PHONE_UPDATED_SUCCESSFULLY})
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+

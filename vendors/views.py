@@ -344,6 +344,9 @@ class VendorProfileAPIView(APIView):
 
 
 class CreateEventView(APIView):
+    """
+    API view for creating and retrieving events associated with the authenticated vendor.
+    """
     permission_classes = [IsAuthenticated, IsVendor]
 
     def get(self, request):
@@ -354,16 +357,14 @@ class CreateEventView(APIView):
     def post(self, request):
         serializer = EventCreateSerializer(data=request.data)
         if serializer.is_valid():
+
             # Assign vendor_id before saving the event
-            serializer.validated_data['vendor_id'] = request.user.id  # Assuming user is authenticated vendor
+            serializer.validated_data['vendor_id'] = request.user.id  
+
+            serializer.save()
             
-            # Save the event
-            event = serializer.save()
-            
-            # Return success response
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
-            # Return error response if serializer is invalid
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
 
@@ -371,6 +372,10 @@ class CreateEventView(APIView):
         
 
 class VendorEventDetailView(APIView):
+    """
+    API view for retrieving, updating, and deleting specific events 
+    associated with the authenticated vendor.
+    """
     permission_classes = [IsAuthenticated, IsVendor]
 
     def get(self, request, event_id):
@@ -396,14 +401,23 @@ class VendorEventDetailView(APIView):
 
 
 class TicketTypeListCreateAPIView(generics.ListCreateAPIView):
+    """
+    API view for listing and creating ticket types associated 
+    with events of the authenticated vendor.
+    """
     serializer_class = TicketTypeSerializer
     permission_classes = [IsAuthenticated, IsVendor]
 
     def get_queryset(self):
         # Filter ticket types created by the authenticated user
         return TicketType.objects.filter(event__vendor=self.request.user)
+    
 
 class TicketTypeDetailUpdateAPIView(generics.RetrieveUpdateAPIView):
+    """
+    API view for retrieving, updating ticket types associated with events
+    of the authenticated vendor.
+    """
     queryset = TicketType.objects.all()
     serializer_class = TicketTypeSerializer
     permission_classes = [IsAuthenticated, IsVendor]

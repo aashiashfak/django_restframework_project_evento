@@ -5,6 +5,8 @@ from customadmin.models import Category, Location
 from django.utils.translation import gettext_lazy as _
 from accounts.models import Vendor, CustomUser
 from .utilities import generate_qr_code
+from django.utils import timezone
+from django.db.models import Count, Q
 
 class TicketTypeSerializer(serializers.ModelSerializer):
     sold_count = serializers.ReadOnlyField()
@@ -69,13 +71,10 @@ class EventCreateSerializer(serializers.Serializer):
         ticket_types_data = validated_data.pop('ticket_types')
         
 
-        # Get or create venue
         venue, _ = Venue.objects.get_or_create(name=venue_name)
 
-        # Get location
         location = Location.objects.get(name=location_name)
 
-        # Replace venue and location with venue_name and location_name respectively
         validated_data['venue'] = venue
         validated_data['location'] = location
         
@@ -190,8 +189,11 @@ class EventSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Event
-        fields = ['id', 'event_name', 'categories', 'start_date', 'end_date', 'venue', 'location', 'event_img_1',
-                  'event_img_2', 'event_img_3', 'about', 'instruction', 'terms_and_conditions', 'vendor', 'organizer_name', 'ticket_types']
+        fields = [
+            'id', 'event_name', 'categories', 'start_date', 'end_date', 'venue', 'location', 'event_img_1',
+            'event_img_2', 'event_img_3', 'about', 'instruction', 'terms_and_conditions', 'vendor',
+            'organizer_name', 'ticket_types'
+            ]
 
     def get_organizer_name(self, obj):
         try:
@@ -238,8 +240,8 @@ class TicketBookingSerializer(serializers.ModelSerializer):
         ticket_count = validated_data['ticket_count']
         ticket_price = ticket_type.price * ticket_count
 
-        timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
-        qr_data = f"Ticket ID: {ticket_type.id}-{user.id}-{timestamp}"
+        # timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
+        # qr_data = f"Ticket ID: {ticket_type.id}-{user.id}-{timestamp}"
 
         # Create the ticket instance
         ticket = Ticket.objects.create(
@@ -247,14 +249,31 @@ class TicketBookingSerializer(serializers.ModelSerializer):
             user=user,
             ticket_price=ticket_price,
             ticket_count=ticket_count,
-            qr_code=generate_qr_code(qr_data)
+            # qr_code=generate_qr_code(qr_data)
         )
 
         # Update the sold count of the ticket type
-        ticket_type.sold_count += ticket_count
-        ticket_type.save()
+        # ticket_type.sold_count += ticket_count
+        # ticket_type.save()
 
         return ticket
+
+
+
+class PaymentConfirmationSerializer(serializers.ModelSerializer):
+    event_name = serializers.ReadOnlyField(source='ticket_type.event.event_name')
+    event_date = serializers.ReadOnlyField(source='ticket_type.event.start_date')
+    ticket_type_name = serializers.ReadOnlyField(source='ticket_type.type_name')
+    quantity = serializers.ReadOnlyField(source='ticket_count')
+    total_price = serializers.ReadOnlyField(source='ticket_price')
+   
+
+    class Meta:
+        model = Ticket
+        fields = [
+            'event_name', 'event_date', 'ticket_type_name', 'quantity', 'total_price']
+
+
 
 
 class TicketSerializer(serializers.ModelSerializer):
@@ -264,59 +283,37 @@ class TicketSerializer(serializers.ModelSerializer):
        
 
 
+class TrendingEventSerializer(serializers.ModelSerializer):
+    """
+    Serializer for trending events based on booking count in the last 7 days.
+    """
 
+    booking_count = serializers.IntegerField()
+    organizer_name = serializers.SerializerMethodField()
 
+    class Meta:
+        model = Event
+        exclude = ['vendor']  # Exclude the vendor field
 
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        return representation
 
-# from .utilities import generate_qr_code
+    def get_organizer_name(self, obj):
+        return obj.vendor.vendor_details.organizer_name
 
-# class TicketBookingSerializer(serializers.ModelSerializer):
-#     ticket_count = serializers.IntegerField(min_value=1, required=True)
+    @staticmethod
+    def get_trending_events():
+        # Calculate the start date for the last 7 days
+        start_date = timezone.now() - timezone.timedelta(days=7)
 
-#     class Meta:
-#         model = Ticket
-#         fields = ['ticket_count']
+        # Fetch the top trending active events in the last 7 days
+        trending_events = Event.objects.filter(status='active').annotate(
+            booking_count=Count('ticket_types__tickets', filter=Q(ticket_types__tickets__booking_date__gte=start_date))
+        ).order_by('-booking_count')[:10]  # Fetch top 10 trending events
 
-#     def validate(self, attrs):
-#         ticket_count = attrs['ticket_count']
-#         ticket_type = self.context['ticket_type']
+        return trending_events
 
-#         # Check if there are enough available tickets before booking
-#         available_tickets = ticket_type.count - ticket_type.sold_count
-#         if ticket_count > available_tickets:
-#             raise serializers.ValidationError("Not enough tickets available for booking.")
-        
-#         if ticket_count > 5:
-#             raise serializers.ValidationError("You can only book up to 5 tickets.")
-
-#         return attrs
-
-#     def create(self, validated_data):
-#         ticket_type = self.context['ticket_type']
-#         user = self.context['request'].user
-
-#         # Calculate the ticket price based on ticket type and count
-#         ticket_count = validated_data['ticket_count']
-#         ticket_price = ticket_type.price * ticket_count
-
-#         qr_data = f"Ticket ID: {ticket_type}-{user}"
-
-#         # Create the ticket instance
-
-#         ticket = Ticket.objects.create(
-#             ticket_type=ticket_type,
-#             user=user,
-#             ticket_price=ticket_price,
-#             ticket_count=ticket_count,
-#             qr_code = generate_qr_code(qr_data)
-
-#         )
-
-#         # Update the sold count of the ticket type
-#         ticket_type.sold_count += ticket_count
-#         ticket_type.save()
-
-#         return ticket
 
 
 

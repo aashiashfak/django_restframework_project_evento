@@ -5,7 +5,11 @@ from .views import (
     EventByLocationAPIView,
     EventDetailAPIView,
     TicketTypeListAPIView,
-    TicketBookingAPIView
+    TicketBookingAPIView,
+    ConfirmPaymentAPIView,
+    CancelTicketAPIView,
+    HandleRazorpayWebhookView,
+    TrendingEventAPIView,
 )
 
 urlpatterns = [
@@ -15,5 +19,10 @@ urlpatterns = [
     path('event_details/<int:pk>/', EventDetailAPIView.as_view(), name='event-details'),
     path('event/<int:event_id>/tickets/', TicketTypeListAPIView.as_view(), name='event_tickets'),
     path('book-tickets/<int:ticket_id>/', TicketBookingAPIView.as_view(), name='book-tickets'),
+    path('confirm-payment/<int:ticket_id>/', ConfirmPaymentAPIView.as_view(), name='confirm-payment'),
+    path('cancel-ticket/<int:ticket_id>/', CancelTicketAPIView.as_view(), name='cancel_ticket'),
+    path('api/handle-razorpay-webhook/', HandleRazorpayWebhookView.as_view(), name='handle-razorpay-webhook'),
+    path('trending-events/', TrendingEventAPIView.as_view(), name='trending-events'),
+
 
 ]

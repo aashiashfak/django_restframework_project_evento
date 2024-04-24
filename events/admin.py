@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Event, TicketType, Venue, Ticket
+from .models import Event, TicketType, Venue, Ticket, Payment
 # from customadmin.models import Location
 
 @admin.register(Venue)
@@ -15,9 +15,15 @@ class TicketTypeAdmin(admin.ModelAdmin):
 
 @admin.register(Ticket)
 class TicketAdmin(admin.ModelAdmin):
-    list_display = ['ticket_type']
-    search_fields = ['ticket_type__type_name', 'event__event_name']
+    list_display = ['id', 'ticket_type', 'event_name', 'user', 'ticket_price', 'ticket_count', 'booking_date', 'ticket_status']
+    search_fields = ['ticket_type__type_name', 'ticket_type__event__event_name']  # Updated search fields
     list_filter = ['ticket_type']
+
+    def event_name(self, obj):
+        return obj.ticket_type.event.event_name
+
+    event_name.short_description = 'Event' 
+
 
 class TicketTypeInline(admin.TabularInline):
     model = TicketType
@@ -30,7 +36,14 @@ class EventAdmin(admin.ModelAdmin):
     list_filter = ['vendor']
     inlines = [TicketTypeInline]
 
+
+
     def display_categories(self, obj):
         return ", ".join([category.name for category in obj.categories.all()])
 
     display_categories.short_description = "Categories"
+
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = ['order_id']

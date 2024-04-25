@@ -1,7 +1,9 @@
 from .serializers import (
     SuperuserLoginSerializer,
     CategorySerializer,
-    LocationSerializer
+    LocationSerializer,
+    VendorSerializer,
+    UserSerializer
 )
 from rest_framework import status
 from rest_framework.response import Response
@@ -12,6 +14,10 @@ from .models import Category,Location
 from accounts.permissions import IsSuperuser
 from rest_framework.permissions import IsAuthenticated
 from .utilities import cached_queryset
+
+from events.serializers import EventSerializer
+from events.models import Event
+from accounts.models import CustomUser,Vendor
 
 class SuperUserLoginView(APIView):
     """
@@ -114,3 +120,129 @@ class LocationRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView
 
     def delete(self, request, id=None):
         return self.destroy(request, id)
+    
+
+class AdminDashboardView(APIView):
+    """
+    API view for the admin dashboard.
+    This view provides statistics about the system including counts of completed events, total events, total users,
+    total vendors, total categories, and a list of the latest 5 new events.
+    """
+    def get(self, request):
+        # Fetch statistics
+        completed_events = Event.objects.filter(status='completed').count()
+        total_events = Event.objects.count()
+        total_users = CustomUser.objects.count()
+        total_vendors = CustomUser.objects.filter(is_vendor=True).count()
+        total_categories = Category.objects.count()
+
+        new_events = cached_queryset(
+            'admin_event_listing',
+            lambda: Event.objects.select_related(
+                    'venue','location'
+                ).prefetch_related(
+                    'categories','ticket_types','vendor'
+                ).order_by('-start_date'),
+            timeout=60
+        )
+        
+        # Serialize data
+        serializer = EventSerializer(new_events, many=True, context={'request': request})
+
+        data = {
+            'completed_events': completed_events,
+            'total_events': total_events,
+            'total_users': total_users,
+            'total_vendors': total_vendors,
+            'total_categories': total_categories,
+            'new_events': serializer.data,
+        }
+
+        return Response(data)
+    
+
+
+class VendorListView(generics.ListAPIView):
+    """
+    API view to list all vendors.
+    """
+    queryset = Vendor.objects.all()
+    serializer_class = VendorSerializer
+
+
+
+class BlockUnblockUserView(APIView):
+    """
+    API view to block or unblock a user.
+    """
+
+    def get(self, request, user_id):
+        try:
+            vendor = CustomUser.objects.get(id=user_id)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "Vendor not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = UserSerializer(vendor)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request, user_id):
+        try:
+            vendor = CustomUser.objects.get(id=user_id)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "Vendor not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        vendor.is_active = not vendor.is_active
+
+        vendor.save(update_fields=['is_active'])
+
+        # Prepare response message
+        if vendor.is_active:
+            message = "Vendor is unblocked."
+        else:
+            message = "Vendor is blocked."
+
+        return Response({"message": message}, status=status.HTTP_200_OK)
+    
+
+
+
+class VendorListView(generics.ListAPIView):
+    """
+    API view to list all vendors.
+    """
+    queryset = CustomUser.objects.all()
+    serializer_class = UserSerializer
+
+
+
+class BlockUnblockUserView(APIView):
+    """
+    API view to block or unblock a user.
+    """
+
+    def get(self, request, user_id):
+        try:
+            user = CustomUser.objects.get(id=user_id)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = UserSerializer(user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request, user_id):
+        try:
+            user = CustomUser.objects.get(id=user_id)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Toggle the is_active field
+        user.is_active = not user.is_active
+        user.save()
+
+        # Prepare response message
+        if user.is_active:
+            message = "User is unblocked."
+        else:
+            message = "User is blocked."
+
+        return Response({"message": message}, status=status.HTTP_200_OK)

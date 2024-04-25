@@ -7,6 +7,7 @@ from django.utils import timezone
 from accounts.serializers import CustomUserEmailSerializer
 from accounts import constants
 from . models import Category,Location
+from accounts.models import CustomUser, Vendor
 
 class SuperuserLoginSerializer(serializers.Serializer):
     """
@@ -62,3 +63,19 @@ class LocationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Location
         fields = ['id', 'name']
+
+
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'username', 'email', 'phone_number', 'is_active']
+
+
+class VendorSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+
+    class Meta:
+        model = Vendor
+        fields = ['id', 'user', 'organizer_name']

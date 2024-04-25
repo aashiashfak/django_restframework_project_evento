@@ -184,14 +184,16 @@ class EventUpdateSerializer(serializers.Serializer):
 
 class EventSerializer(serializers.ModelSerializer):
     organizer_name = serializers.SerializerMethodField()
-    categories = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), many=True)
+    categories = serializers.StringRelatedField(many=True)
+    venue = serializers.StringRelatedField()
+    vendor = serializers.SerializerMethodField()
     ticket_types = TicketTypeSerializer(many=True, read_only=True)
 
     class Meta:
         model = Event
         fields = [
             'id', 'event_name', 'categories', 'start_date', 'end_date', 'venue', 'location', 'event_img_1',
-            'event_img_2', 'event_img_3', 'about', 'instruction', 'terms_and_conditions', 'vendor',
+            'event_img_2', 'event_img_3', 'about', 'instruction', 'terms_and_conditions', 'vendor','status',
             'organizer_name', 'ticket_types'
             ]
 
@@ -204,6 +206,12 @@ class EventSerializer(serializers.ModelSerializer):
                     return vendor.organizer_name
         except Vendor.DoesNotExist:
             return None
+        return None
+    
+    def get_vendor(self, obj):
+
+        if obj.vendor:
+            return obj.vendor.username if obj.vendor.username else obj.vendor.id
         return None
 
 

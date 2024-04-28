@@ -171,7 +171,7 @@ class VendorListView(generics.ListAPIView):
 
 
 
-class BlockUnblockUserView(APIView):
+class BlockUnblockVendorView(APIView):
     """
     API view to block or unblock a user.
     """
@@ -206,7 +206,7 @@ class BlockUnblockUserView(APIView):
 
 
 
-class VendorListView(generics.ListAPIView):
+class CustomUserListView(generics.ListAPIView):
     """
     API view to list all vendors.
     """
@@ -237,7 +237,7 @@ class BlockUnblockUserView(APIView):
 
         # Toggle the is_active field
         user.is_active = not user.is_active
-        user.save()
+        user.save(update_fields=['is_active'])
 
         # Prepare response message
         if user.is_active:

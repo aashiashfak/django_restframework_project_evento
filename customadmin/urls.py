@@ -7,7 +7,10 @@ from .views import (
     LocationRetrieveUpdateDestroyAPIView,
     AdminDashboardView,
     VendorListView,
+    BlockUnblockVendorView,
+    CustomUserListView,
     BlockUnblockUserView
+    
     
 )
 
@@ -19,7 +22,7 @@ urlpatterns = [
     path('Locations/<int:id>/', LocationRetrieveUpdateDestroyAPIView.as_view(), name='category_retrieve_update_destroy'),
     path('admin-dashboard/', AdminDashboardView.as_view(), name='admin_dashboard'),
     path('vendors-list/', VendorListView.as_view(), name='vendor-list'),
-    path('vendor/<int:user_id>/', BlockUnblockUserView.as_view(), name='vendor-detail'),
-     path('users-list/', VendorListView.as_view(), name='user-list'),
+    path('vendor/<int:user_id>/', BlockUnblockVendorView.as_view(), name='vendor-detail'),
+     path('users-list/', CustomUserListView.as_view(), name='user-list'),
     path('user/<int:user_id>/', BlockUnblockUserView.as_view(), name='user-detail'),
 ]

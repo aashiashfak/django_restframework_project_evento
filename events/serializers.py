@@ -7,6 +7,7 @@ from accounts.models import Vendor, CustomUser
 from .utilities import generate_qr_code
 from django.utils import timezone
 from django.db.models import Count, Q
+from django.db.models import Sum
 
 class TicketTypeSerializer(serializers.ModelSerializer):
     sold_count = serializers.ReadOnlyField()
@@ -261,8 +262,8 @@ class TicketBookingSerializer(serializers.ModelSerializer):
         )
 
         # Update the sold count of the ticket type
-        # ticket_type.sold_count += ticket_count
-        # ticket_type.save()
+        ticket_type.sold_count += ticket_count
+        ticket_type.save(update_fields=['sold_count'])
 
         return ticket
 
@@ -291,34 +292,42 @@ class TicketSerializer(serializers.ModelSerializer):
        
 
 
+from django.db.models import Sum
+
 class TrendingEventSerializer(serializers.ModelSerializer):
     """
-    Serializer for trending events based on booking count in the last 7 days.
+    Serializer for trending events based on total quantity of active tickets in the last 30 days.
     """
 
-    booking_count = serializers.IntegerField()
+    total_active_ticket_quantity = serializers.IntegerField()
     organizer_name = serializers.SerializerMethodField()
+    categories = serializers.StringRelatedField(many=True)
+    venue = serializers.StringRelatedField()
 
     class Meta:
         model = Event
-        exclude = ['vendor']  # Exclude the vendor field
-
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        return representation
+        fields = [
+            'id', 'event_name', 'total_active_ticket_quantity', 'categories', 'start_date', 'end_date', 'venue', 'location', 'event_img_1',
+            'event_img_2', 'event_img_3', 'about', 'instruction', 'terms_and_conditions', 'status',
+            'organizer_name',
+        ]
 
     def get_organizer_name(self, obj):
         return obj.vendor.vendor_details.organizer_name
 
     @staticmethod
     def get_trending_events():
-        # Calculate the start date for the last 7 days
-        start_date = timezone.now() - timezone.timedelta(days=7)
+        # Calculate the start date for the last 30 days
+        start_date = timezone.now() - timezone.timedelta(days=30)
 
-        # Fetch the top trending active events in the last 7 days
-        trending_events = Event.objects.filter(status='active').annotate(
-            booking_count=Count('ticket_types__tickets', filter=Q(ticket_types__tickets__booking_date__gte=start_date))
-        ).order_by('-booking_count')[:10]  # Fetch top 10 trending events
+        # Fetch the top trending active events in the last 30 days
+        trending_events = Event.objects.filter(
+            status='active',
+            ticket_types__tickets__booking_date__gte=start_date,
+            ticket_types__tickets__ticket_status='active'  # Filter tickets with active status
+        ).annotate(
+            total_active_ticket_quantity=Sum('ticket_types__tickets__ticket_count')
+        ).order_by('-total_active_ticket_quantity')[:10]
 
         return trending_events
 
@@ -329,6 +338,21 @@ class TrendingEventSerializer(serializers.ModelSerializer):
 
 
 
+
+
+class UserTicketDetailsSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username')
+    email = serializers.EmailField(source='user.email')
+    phone_number = serializers.CharField(source='user.phone_number')
+    ticket_type_name = serializers.CharField(source='ticket_type.type_name')
+    event_name = serializers.CharField(source='ticket_type.event.event_name')
+
+    class Meta:
+        model = Ticket
+        fields = [
+            'id', 'username', 'email', 'phone_number', 'ticket_price', 'ticket_count',
+            'ticket_type_name', 'event_name', 'ticket_status'
+        ]
 
 
 

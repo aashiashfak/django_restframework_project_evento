@@ -36,7 +36,8 @@ class Ticket(models.Model):
         ('active', 'Active'),
         ('canceled', 'Canceled'),
         ('used', 'Used'),
-        ('pending','Pending')
+        ('pending','Pending'),
+        ('disabled','Disabled')
     ]
     ticket_status = models.CharField(max_length=10, choices=TICKET_STATUS_CHOICES, default='pending')
 

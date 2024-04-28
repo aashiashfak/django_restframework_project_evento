@@ -23,7 +23,7 @@ from accounts import constants
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from accounts.models import CustomUser,PendingUser,VendorManager
-from accounts.permissions import IsVendor
+from accounts.permissions import IsVendor, IsActiveUser
 
 
 
@@ -291,14 +291,17 @@ class ChangePasswordView(APIView):
 
 
 from django.shortcuts import get_object_or_404        
-from events.models import Event,TicketType
+from events.models import Event,TicketType,Ticket
 from events.serializers import (
     EventCreateSerializer,
     EventRetrieveSerializer,
     EventUpdateSerializer,
-    TicketTypeSerializer
+    TicketTypeSerializer,
+    UserTicketDetailsSerializer
 
 )
+from django.db.models import Sum
+
 
  
 
@@ -347,7 +350,7 @@ class CreateEventView(APIView):
     """
     API view for creating and retrieving events associated with the authenticated vendor.
     """
-    permission_classes = [IsAuthenticated, IsVendor]
+    permission_classes = [IsAuthenticated, IsVendor, IsActiveUser]
 
     def get(self, request):
         events = Event.objects.filter(vendor=request.user)
@@ -425,3 +428,50 @@ class TicketTypeDetailUpdateAPIView(generics.RetrieveUpdateAPIView):
     def get_serializer(self, *args, **kwargs):
         kwargs['partial'] = True
         return super().get_serializer(*args, **kwargs)
+
+
+
+
+class VendorDashboardAPIView(APIView):
+    """
+    API view for the vendor dashboard.
+    Provides statistics about the vendor's events and tickets.
+    """
+    permission_classes = [IsAuthenticated, IsVendor]
+
+    def get(self, request):
+        vendor = request.user
+
+        total_events_count = Event.objects.filter(vendor=vendor).count()
+        completed_events_count = Event.objects.filter(vendor=vendor, status='completed').count()
+        total_tickets_count = TicketType.objects.filter(event__vendor=vendor).aggregate(total_tickets_count=Sum('count'))['total_tickets_count']
+        boocked_tickets_count = Ticket.objects.filter(ticket_type__event__vendor=vendor, ticket_status='active').count()
+        total_earnings = Ticket.objects.filter(ticket_type__event__vendor=vendor, ticket_status='active').aggregate(total_earnings=Sum('ticket_price'))['total_earnings']
+
+        # events = Event.objects.filter(vendor=vendor)
+
+        data = {
+            'total_events_count': total_events_count,
+            'completed_events_count': completed_events_count,
+            'total_tickets_count': total_tickets_count,
+            'boocked_tickets_count': boocked_tickets_count,
+            'total_earnings': total_earnings,
+            # 'events': [{'event_name': event.event_name, 'start_date': event.start_date, 'end_date': event.end_date} for event in events]
+        }
+
+        return Response(data)
+    
+
+
+class VendorBookedUsersAPIView(APIView):
+    """
+    API view to get all users who booked a vendor's events along with their ticket details and event names.
+    """
+    def get(self, request):
+        # Query all tickets booked by users for the vendor's events
+        booked_tickets = Ticket.objects.filter(ticket_type__event__vendor_id=request.user)
+
+        # Serialize the booked tickets
+        serializer = UserTicketDetailsSerializer(booked_tickets, many=True)
+
+        return Response(serializer.data)

@@ -51,21 +51,21 @@ def initiate_razorpay_payment(ticket_id):
 
         # Extract the order ID from the Razorpay response
         razorpay_order_id = razorpay_order['id']
-        razorpay_order_status = razorpay_order['status']
+        # razorpay_order_status = razorpay_order['status']
 
         # Create a new Payment instance
         payment = Payment.objects.create(
             ticket=ticket,
             order_id=razorpay_order_id,
             amount=ticket.ticket_price,
-            status=razorpay_order_status  # Set initial status as pending
+            status='pending'  # Set initial status as pending
         )
 
         payment_data = {
                 "order_id": razorpay_order_id,
                 "amount": order_data["amount"],
                 "currency": order_data["currency"],
-                "status": payment.status  # Assuming you want to include the initial status of the payment
+                "status": payment.status  
             }
         return payment_data
     except Exception as e:
@@ -74,7 +74,7 @@ def initiate_razorpay_payment(ticket_id):
         error_message = str(e)
         return error_message
     
-    
+
 def verify_razorpay_signature(signature, payload):
     """
     Verifies the signature of a Razorpay webhook request.

@@ -159,10 +159,15 @@ class TicketBookingAPIView(APIView):
     """
     API view for booking tickets.
     """
+
     
     def post(self, request, *args, **kwargs):
+
         if not request.user.is_authenticated:
             raise PermissionDenied("You need to be logged in to book tickets.")
+        
+        if not request.user.is_active:
+            raise PermissionDenied("Your account is not active.")
 
         ticket_id = kwargs.get('ticket_id')  
 
@@ -188,6 +193,7 @@ class ConfirmPaymentAPIView(APIView):
     """
 
     def get(self, request, ticket_id):
+
         try:
             ticket = Ticket.objects.get(pk=ticket_id)
         except Ticket.DoesNotExist:
@@ -197,6 +203,7 @@ class ConfirmPaymentAPIView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request, ticket_id):
+        
         if not request.user.is_authenticated:
             return Response({"error": "You need to be logged in to confirm payment."}, status=status.HTTP_401_UNAUTHORIZED)
   

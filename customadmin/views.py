@@ -18,6 +18,7 @@ from .utilities import cached_queryset
 from events.serializers import EventSerializer
 from events.models import Event
 from accounts.models import CustomUser,Vendor
+from accounts import constants
 
 class SuperUserLoginView(APIView):
     """
@@ -166,10 +167,16 @@ class VendorListView(generics.ListAPIView):
     """
     API view to list all vendors.
     """
-    queryset = Vendor.objects.all()
     serializer_class = VendorSerializer
 
-
+    def get_queryset(self):
+        return cached_queryset(
+            'vendors_list', lambda:Vendor.objects.all().select_related('user'), timeout=60
+        )
+    
+    def get(self, request):
+        return self.list(request)
+    
 
 class BlockUnblockVendorView(APIView):
     """
@@ -178,18 +185,18 @@ class BlockUnblockVendorView(APIView):
 
     def get(self, request, user_id):
         try:
-            vendor = CustomUser.objects.get(id=user_id)
+            vendor = CustomUser.objects.get(id=user_id, is_vendor=True)
         except CustomUser.DoesNotExist:
-            return Response({"error": "Vendor not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": constants.ERROR_VENDOR_NOT_FOUND}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = UserSerializer(vendor)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def post(self, request, user_id):
         try:
-            vendor = CustomUser.objects.get(id=user_id)
+            vendor = CustomUser.objects.get(id=user_id, is_vendor=True)
         except CustomUser.DoesNotExist:
-            return Response({"error": "Vendor not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": constants.ERROR_VENDOR_NOT_FOUND}, status=status.HTTP_404_NOT_FOUND)
 
         vendor.is_active = not vendor.is_active
 
@@ -197,9 +204,9 @@ class BlockUnblockVendorView(APIView):
 
         # Prepare response message
         if vendor.is_active:
-            message = "Vendor is unblocked."
+            message = constants.MESSAGE_VENDOR_UNBLOCKED
         else:
-            message = "Vendor is blocked."
+            message = constants.MESSAGE_VENDOR_BLOCKED
 
         return Response({"message": message}, status=status.HTTP_200_OK)
     
@@ -210,10 +217,16 @@ class CustomUserListView(generics.ListAPIView):
     """
     API view to list all vendors.
     """
-    queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
 
-
+    def get_queryset(self):
+        return cached_queryset(
+            'users_list', lambda:CustomUser.objects.all(), timeout=60
+        )
+    
+    def get(self, request):
+        return self.list(request)
+    
 
 class BlockUnblockUserView(APIView):
     """
@@ -224,7 +237,7 @@ class BlockUnblockUserView(APIView):
         try:
             user = CustomUser.objects.get(id=user_id)
         except CustomUser.DoesNotExist:
-            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": constants.ERROR_USER_NOT_FOUND}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = UserSerializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -233,7 +246,7 @@ class BlockUnblockUserView(APIView):
         try:
             user = CustomUser.objects.get(id=user_id)
         except CustomUser.DoesNotExist:
-            return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": constants.ERROR_USER_NOT_FOUND}, status=status.HTTP_404_NOT_FOUND)
 
         # Toggle the is_active field
         user.is_active = not user.is_active
@@ -241,8 +254,11 @@ class BlockUnblockUserView(APIView):
 
         # Prepare response message
         if user.is_active:
-            message = "User is unblocked."
+            message = constants.MESSAGE_USER_UNBLOCKED
         else:
-            message = "User is blocked."
+            message = constants.MESSAGE_USER_BLOCKED
 
-        return Response({"message": message}, status=status.HTTP_200_OK)
+        return Response({
+            "message": message,
+            "is_active": user.is_active
+        }, status=status.HTTP_200_OK)

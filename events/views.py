@@ -50,9 +50,9 @@ from django.http import Http404
 from django.utils import timezone
 from customadmin.utilities import cached_queryset
 from .utilities import initiate_razorpay_payment, verify_razorpay_signature
-import razorpay
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Count, Q
+from accounts import constants
+
 
 
 
@@ -80,7 +80,8 @@ class EventByLocationAPIView(generics.ListAPIView):
             # return Event.objects.filter(location=location_id)
             return cached_queryset(
                 'events_by_location',
-                lambda: Event.objects.prefetch_related('venue','location','vendor','categories','ticket_types').filter(location=location_id),
+                lambda: Event.objects.prefetch_related(
+                    'venue','location','vendor','categories','ticket_types').filter(location=location_id),
                 timeout=60
             )
         else:
@@ -98,7 +99,8 @@ class EventDetailAPIView(generics.RetrieveAPIView):
             try:
                 return cached_queryset(
                     'event_detail',
-                    lambda: Event.objects.prefetch_related('venue','location','vendor','categories','ticket_types').get(id=event_id),
+                    lambda: Event.objects.prefetch_related(
+                        'venue','location','vendor','categories','ticket_types').get(id=event_id),
                     timeout=60
                 )
             except Event.DoesNotExist:
@@ -131,7 +133,8 @@ class EventListAPIView(generics.ListAPIView):
     def get_queryset(self):
         return cached_queryset(
             'active_events',
-            lambda: Event.objects.prefetch_related('venue','location','vendor','categories','ticket_types',).filter(status='active'),
+            lambda: Event.objects.prefetch_related(
+                'venue','location','vendor','categories','ticket_types',).filter(status='active'),
             timeout=60
         )
 
@@ -164,24 +167,24 @@ class TicketBookingAPIView(APIView):
     def post(self, request, *args, **kwargs):
 
         if not request.user.is_authenticated:
-            raise PermissionDenied("You need to be logged in to book tickets.")
+            raise PermissionDenied(constants.ERROR_LOGIN_REQUIRED)
         
         if not request.user.is_active:
-            raise PermissionDenied("Your account is not active.")
+            raise PermissionDenied(constants.ERROR_ACCOUNT_NOT_ACTIVE)
 
         ticket_id = kwargs.get('ticket_id')  
 
         try:
             ticket_type = TicketType.objects.get(pk=ticket_id)
         except TicketType.DoesNotExist:
-             raise Http404("Ticket type not found.")
+             raise Http404(constants.ERROR_TICKET_TYPE_NOT_FOUND)
 
         serializer = TicketBookingSerializer(data=request.data, context={'ticket_type': ticket_type, 'request': request})
 
         if serializer.is_valid():
             serializer.save()
 
-            return Response({"message": "Ticket booked successfully."}, status=status.HTTP_201_CREATED)
+            return Response({"message": constants.SUCCESS_TICKET_BOOKED}, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
@@ -197,7 +200,7 @@ class ConfirmPaymentAPIView(APIView):
         try:
             ticket = Ticket.objects.get(pk=ticket_id)
         except Ticket.DoesNotExist:
-            return Response({"error": "Ticket not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": constants.ERROR_TICKET_NOT_FOUND}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = PaymentConfirmationSerializer(ticket)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -205,20 +208,20 @@ class ConfirmPaymentAPIView(APIView):
     def post(self, request, ticket_id):
         
         if not request.user.is_authenticated:
-            return Response({"error": "You need to be logged in to confirm payment."}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response({"error": constants.ERROR_LOGIN_REQUIRED}, status=status.HTTP_401_UNAUTHORIZED)
   
         try:
             ticket = Ticket.objects.get(pk=ticket_id)
         except Ticket.DoesNotExist:
-            return Response({"error": "Ticket not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": constants.ERROR_TICKET_NOT_FOUND}, status=status.HTTP_404_NOT_FOUND)
         
         # Pass ticket_id to this function to initiate payment for the specific ticket
         payment_data = initiate_razorpay_payment(ticket_id)
 
         if payment_data:
-            return Response({"payment_data": payment_data, "message": "Redirecting to payment initiation."}, status=status.HTTP_200_OK)
+            return Response({"payment_data": payment_data}, status=status.HTTP_200_OK)
         else:
-            return Response({"error":"Error during payment initiation"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": constants.ERROR_PAYMENT_INITIATION_FAILED}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
    
 
 
@@ -236,13 +239,13 @@ class CancelTicketAPIView(APIView):
             ticket = Ticket.objects.get(pk=ticket_id)
             print(ticket_id)
         except Ticket.DoesNotExist:
-            return Response({"error": "Ticket not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": constants.ERROR_TICKET_NOT_FOUND}, status=status.HTTP_404_NOT_FOUND)
 
         if request.user != ticket.user:
-            return Response({"error": "You don't have permission to cancel this ticket."}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"error": constants.NO_PERMISSION_CANCEL}, status=status.HTTP_403_FORBIDDEN)
 
         if ticket.ticket_status == 'canceled':
-            return Response({"message": "Ticket is already canceled."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"message": constants.MESSAGE_TICKET_ALREADY_CANCELED}, status=status.HTTP_400_BAD_REQUEST)
 
         ticket.ticket_status = 'canceled'
         ticket.save(update_fields=['ticket_status'])

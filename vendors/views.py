@@ -66,10 +66,10 @@ class VendorSignupView(APIView):
 
             try:
                 send_otp_email(email, serializer.validated_data['contact_name'], otp)
-                return Response({'message': 'OTP sent successfully.'}, status=status.HTTP_200_OK)
+                return Response({'message': constants.OTP_SENT_SUCCESSFULLY}, status=status.HTTP_200_OK)
             except Exception as e:
                 pending_user.delete()
-                return Response({'error': 'Failed to send OTP.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response({'error': constants.FAILED_TO_SEND_OTP_ERROR}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     
@@ -108,6 +108,7 @@ class VendorVerifyOtpView(APIView):
                     vendor_data = request.session.get('vendor_signup_data')
                     vendor_data.pop('confirm_password')
                     password = vendor_data.pop('password')
+            
                     
                     # Create vendor user and vendor using custom manager
                     vendor_manager = VendorManager()
@@ -173,7 +174,7 @@ class VendorForgetPasswordOTPsent(APIView):
                 vendor = CustomUser.objects.get(email=email)
                 if not vendor.is_vendor:
                     return Response(
-                        {"error": "Vendor with this email does not exist"},
+                        {"error": constants.ERROR_VENDOR_EMAIL_NOT_FOUND},
                         status=status.HTTP_404_NOT_FOUND
                     )
                     
@@ -200,7 +201,7 @@ class VendorForgetPasswordOTPsent(APIView):
 
             except CustomUser.DoesNotExist:
                 return Response(
-                    {"error": "Vendor with this email does not exist"},
+                    {"error": constants.ERROR_VENDOR_EMAIL_NOT_FOUND},
                     status=status.HTTP_404_NOT_FOUND
                     )
             
@@ -239,7 +240,7 @@ class VerifyOTPView(APIView):
                 else:
                     pending_user.delete()
                     return Response(
-                        {'detail': 'OTP verified successfully'},
+                        {'detail': constants.OTP_VERIFIED_SUCCESSFULLY},
                         status=status.HTTP_200_OK
                     )
             except PendingUser.DoesNotExist:
@@ -272,12 +273,12 @@ class ChangePasswordView(APIView):
                     vendor.password = hashed_password
                     vendor.save(update_fields=['password'])
                     return Response(
-                        {"detail": "Password changed successfully"},
+                        {"detail": constants.PASSWORD_CHANGED_SUCCESSFULLY},
                         status=status.HTTP_200_OK
                         )
                 except CustomUser.DoesNotExist:
                     return Response(
-                        {"error": "Vendor with this email does not exist"},
+                        {"error": constants.ERROR_VENDOR_EMAIL_NOT_FOUND},
                         status=status.HTTP_404_NOT_FOUND
                         )
             else:
@@ -294,13 +295,15 @@ from django.shortcuts import get_object_or_404
 from events.models import Event,TicketType,Ticket
 from events.serializers import (
     EventCreateSerializer,
-    EventRetrieveSerializer,
+    EventSerializer,
     EventUpdateSerializer,
     TicketTypeSerializer,
     UserTicketDetailsSerializer
 
 )
 from django.db.models import Sum
+from customadmin.utilities import cached_queryset
+from django.core.cache import cache
 
 
  
@@ -319,7 +322,7 @@ class VendorProfileAPIView(APIView):
         print(vendor)
         
         if not vendor:
-            return Response({'error': 'Vendor profile does not exist'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': constants.ERROR_VENDOR_PROFILE_NOT_FOUND}, status=status.HTTP_404_NOT_FOUND)
 
         # Serialize the Vendor data using VendorSerializer
         serializer = VendorSerializer(vendor)
@@ -333,7 +336,7 @@ class VendorProfileAPIView(APIView):
         print(vendor)
         
         if not vendor:
-            return Response({'error': 'Vendor profile does not exist'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': constants.ERROR_VENDOR_PROFILE_NOT_FOUND}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = VendorProfileSerializer(vendor, data=request.data, context={'request': request})
         
@@ -353,8 +356,16 @@ class CreateEventView(APIView):
     permission_classes = [IsAuthenticated, IsVendor, IsActiveUser]
 
     def get(self, request):
-        events = Event.objects.filter(vendor=request.user)
-        serializer = EventRetrieveSerializer(events, many=True)
+        events = cached_queryset(
+            'vendor_event_listing',
+            lambda: Event.objects.select_related(
+                'venue','location'
+            ).prefetch_related(
+                'categories','ticket_types','vendor').filter(vendor=request.user),
+            timeout=60
+        )
+        
+        serializer = EventSerializer(events, many=True)
         return Response(serializer.data)
 
     def post(self, request):
@@ -383,7 +394,7 @@ class VendorEventDetailView(APIView):
 
     def get(self, request, event_id):
         event = get_object_or_404(Event, pk=event_id, vendor=request.user)
-        serializer = EventRetrieveSerializer(event)
+        serializer = EventSerializer(event)
         return Response(serializer.data)
 
     def put(self, request, event_id):
@@ -413,8 +424,11 @@ class TicketTypeListCreateAPIView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         # Filter ticket types created by the authenticated user
-        return TicketType.objects.filter(event__vendor=self.request.user)
-    
+        return cached_queryset(
+            'vendor_ticket_types_list',
+            lambda:TicketType.objects.select_related('event__vendor').filter(event__vendor=self.request.user),
+            timeout=60
+        )
 
 class TicketTypeDetailUpdateAPIView(generics.RetrieveUpdateAPIView):
     """
@@ -439,28 +453,36 @@ class VendorDashboardAPIView(APIView):
     """
     permission_classes = [IsAuthenticated, IsVendor]
 
+
     def get(self, request):
         vendor = request.user
 
-        total_events_count = Event.objects.filter(vendor=vendor).count()
-        completed_events_count = Event.objects.filter(vendor=vendor, status='completed').count()
-        total_tickets_count = TicketType.objects.filter(event__vendor=vendor).aggregate(total_tickets_count=Sum('count'))['total_tickets_count']
-        boocked_tickets_count = Ticket.objects.filter(ticket_type__event__vendor=vendor, ticket_status='active').count()
-        total_earnings = Ticket.objects.filter(ticket_type__event__vendor=vendor, ticket_status='active').aggregate(total_earnings=Sum('ticket_price'))['total_earnings']
+        # Check if data is already cached
+        data = cache.get('vendor_dashboard_data')
+        if data is not None:
+            print('fetched from cache')
 
-        # events = Event.objects.filter(vendor=vendor)
+        if data is None:
+            print('fetched from db')
+            total_events_count = Event.objects.filter(vendor=vendor).count()
+            completed_events_count = Event.objects.filter(vendor=vendor, status='completed').count()
+            total_tickets_count = TicketType.objects.filter(event__vendor=vendor).aggregate(total_tickets_count=Sum('count'))['total_tickets_count']
+            booked_tickets_count = Ticket.objects.filter(ticket_type__event__vendor=vendor, ticket_status='active').count()
+            total_earnings = Ticket.objects.filter(ticket_type__event__vendor=vendor, ticket_status='active').aggregate(total_earnings=Sum('ticket_price'))['total_earnings']
 
-        data = {
-            'total_events_count': total_events_count,
-            'completed_events_count': completed_events_count,
-            'total_tickets_count': total_tickets_count,
-            'boocked_tickets_count': boocked_tickets_count,
-            'total_earnings': total_earnings,
-            # 'events': [{'event_name': event.event_name, 'start_date': event.start_date, 'end_date': event.end_date} for event in events]
-        }
+            # Construct data dictionary
+            data = {
+                'total_events_count': total_events_count,
+                'completed_events_count': completed_events_count,
+                'total_tickets_count': total_tickets_count,
+                'booked_tickets_count': booked_tickets_count,
+                'total_earnings': total_earnings,
+            }
+
+            # Store data in cache
+            cache.set('vendor_dashboard_data', data, timeout=3600) 
 
         return Response(data)
-    
 
 
 class VendorBookedUsersAPIView(APIView):
@@ -469,7 +491,12 @@ class VendorBookedUsersAPIView(APIView):
     """
     def get(self, request):
         # Query all tickets booked by users for the vendor's events
-        booked_tickets = Ticket.objects.filter(ticket_type__event__vendor_id=request.user)
+        booked_tickets = cached_queryset(
+            'booked_user_deatils',
+            lambda:Ticket.objects.select_related(
+                'ticket_type','user', 'ticket_type__event').filter(ticket_type__event__vendor_id=request.user),
+            timeout=60
+        )
 
         # Serialize the booked tickets
         serializer = UserTicketDetailsSerializer(booked_tickets, many=True)

@@ -10,6 +10,7 @@ import requests
 import phonenumbers
 from phonenumbers.phonenumberutil import NumberParseException
 from rest_framework import serializers
+from .import constants
 
 
 
@@ -162,7 +163,7 @@ def validate_and_format_phone_number(phone_number):
     try:
         parsed_number = phonenumbers.parse(phone_number, None)
         if not phonenumbers.is_valid_number(parsed_number):
-            raise serializers.ValidationError("Invalid phone number format.")
+            raise serializers.ValidationError(constants.ERROR_INVALID_FORMAT)
         
         formatted_number = phonenumbers.format_number(
             parsed_number,
@@ -170,5 +171,5 @@ def validate_and_format_phone_number(phone_number):
         )
         return formatted_number
     except NumberParseException:
-        raise serializers.ValidationError("Invalid phone number.")
+        raise serializers.ValidationError(constants.INVALID_PHONE_NUMBER)
     

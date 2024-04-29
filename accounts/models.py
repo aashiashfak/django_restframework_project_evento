@@ -68,6 +68,7 @@ class Vendor(models.Model):
 from django.contrib.auth.hashers import make_password
 
 class VendorManager(models.Manager):
+    
     def create_vendor_user(self, vendor_data, password):
         """
         Creates and saves a Vendor and CustomUser with the given data.
@@ -92,14 +93,15 @@ class VendorManager(models.Manager):
         
         # Create Vendor
         vendor = Vendor.objects.create(**vendor_specific_data)
+
         
        
         
-        
+        username = email.split('@')[0] 
         # Create CustomUser
-        user = CustomUser.objects.create_vendor_user_manager(email=email, password=password, **vendor_data)
+        user = CustomUser.objects.create_user(email=email, password=password, username=username, **vendor_data)
         user.is_vendor = True
-        user.save()
+        user.save(update_fields=['is_vendor'])
     
         
         # Associate user with vendor

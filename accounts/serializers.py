@@ -11,7 +11,7 @@ from .models import CustomUser,PendingUser
 from django.core.validators import EmailValidator
 from rest_framework.exceptions import PermissionDenied
 from events.serializers import TicketSerializer
-
+from .import constants
 
 
 class GoogleSignInSerializer(serializers.Serializer):
@@ -29,11 +29,11 @@ class GoogleSignInSerializer(serializers.Serializer):
             user_data['sub']  
         except:
             raise serializers.ValidationError(
-                "this token has expired or invalid please try again"
+                constants.ERROR_TOKEN_EXPIRED_OR_INVALID
             )
         
         if user_data['aud'] != settings.GOOGLE_CLIENT_ID:
-                raise AuthenticationFailed('Could not verify user.')
+                raise AuthenticationFailed(constants.ERROR_VERIFY_USER)
 
         email=user_data['email']
         username = email.split('@')[0] 
@@ -121,7 +121,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         """
         user = self.context['request'].user
         if CustomUser.objects.exclude(pk=user.pk).filter(username=value).exists():
-            raise serializers.ValidationError({"username": "This username is already in use."})
+            raise serializers.ValidationError({"username": constants.ERROR_USERNAME_IN_USE})
         return value
 
     def update(self, instance, validated_data):
@@ -149,10 +149,10 @@ class UpdateEmailSerializer(serializers.Serializer):
         user = self.context['request'].user
     
         if user.email == value:
-            raise serializers.ValidationError("This is your current email.")
+            raise serializers.ValidationError(constants.ERROR_CURRENT_EMAIL)
         
         if CustomUser.objects.exclude(pk=user.pk).filter(email=value).exists():
-            raise serializers.ValidationError("Email is already in use.")
+            raise serializers.ValidationError(constants.ERROR_EMAIL_IN_USE)
         
         return value
 
@@ -173,19 +173,19 @@ class VerifyUpdateEmailOTPSerializer(serializers.Serializer):
         email = request.session.get('email')
         
         if not email:
-            raise serializers.ValidationError("Email not found in session")
+            raise serializers.ValidationError(constants.EMAIL_NOT_FOUND_ERROR)
         
         try:
             pending_user = PendingUser.objects.get(email=email)
 
             if pending_user.otp != value:
-                raise serializers.ValidationError("Invalid OTP")
+                raise serializers.ValidationError(constants.INVALID_OTP)
             
             if pending_user.expiry_time < timezone.now():
-                raise serializers.ValidationError("OTP has expired")
+                raise serializers.ValidationError(constants.OTP_EXPIRED_ERROR)
                 
         except PendingUser.DoesNotExist:
-            raise serializers.ValidationError("Pending user not found")
+            raise serializers.ValidationError(constants.PENDING_USER_NOT_FOUND_ERROR)
 
         return value
 
@@ -217,10 +217,10 @@ class UpdatePhoneSerializer(serializers.Serializer):
         user = self.context['request'].user
         
         if user.phone_number == formatted_phone_number:
-            raise serializers.ValidationError("This is your current phone number.")
+            raise serializers.ValidationError(constants.ERROR_CURRENT_PHONE_NUMBER)
 
         if CustomUser.objects.exclude(pk=user.pk).filter(phone_number=formatted_phone_number).exists():
-            raise serializers.ValidationError("Phone number is already in use.")
+            raise serializers.ValidationError(constants.ERROR_PHONE_NUMBER_IN_USE)
         
         return formatted_phone_number
 
@@ -241,20 +241,20 @@ class VerifyUpdatePhoneOTPSerializer(serializers.Serializer):
         phone_number = request.session.get('phone_number')
         
         if not phone_number:
-            raise serializers.ValidationError("Phone number not found in session")
+            raise serializers.ValidationError(constants.PHONE_NUMBER_NOT_FOUND)
         
         try:
             pending_user = PendingUser.objects.get(phone_number=phone_number)
 
             # Check if OTP has expired
             if pending_user.expiry_time < timezone.now():
-                raise serializers.ValidationError("OTP has expired")
+                raise serializers.ValidationError(constants.OTP_EXPIRED_ERROR)
 
             if pending_user.otp != value:
-                raise serializers.ValidationError("Invalid OTP")
+                raise serializers.ValidationError(constants.INVALID_OTP)
                 
         except PendingUser.DoesNotExist:
-            raise serializers.ValidationError("Pending user not found")
+            raise serializers.ValidationError(constants.PENDING_USER_NOT_FOUND_ERROR)
 
         return value
 
@@ -269,10 +269,10 @@ class VerifyUpdatePhoneOTPSerializer(serializers.Serializer):
         
         # Check again if OTP has expired before updating phone number
         if pending_user.expiry_time < timezone.now():
-            raise serializers.ValidationError("OTP has expired")
+            raise serializers.ValidationError(constants.OTP_EXPIRED_ERROR)
 
         instance.phone_number = phone_number
-        instance.save()
+        instance.save(update_fields=['phone_number'])
         pending_user.delete()
         return instance
 

@@ -26,17 +26,17 @@ class CustomUserManager(BaseUserManager):
         user.save()  
         return user  
 
-    def create_vendor_user_manager(self , email, password,  **extra_fields):
-        if not email:
-            raise ValueError('The Email field must be set')
+    # def create_vendor_user_manager(self , email, password,  **extra_fields):
+    #     if not email:
+    #         raise ValueError('The Email field must be set')
         
 
-        email = self.normalize_email(email)
-        user = self.model(email=email, password=password, **extra_fields)
-        user.set_password(password) 
-        user.save()
+    #     email = self.normalize_email(email)
+    #     user = self.model(email=email, password=password, **extra_fields)
+    #     user.set_password(password) 
+    #     user.save()
 
-        return user
+    #     return user
 
 
     def create_superuser(self, username, email, password, **extra_fields):

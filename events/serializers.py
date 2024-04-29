@@ -6,12 +6,13 @@ from django.utils.translation import gettext_lazy as _
 from accounts.models import Vendor, CustomUser
 from .utilities import generate_qr_code
 from django.utils import timezone
-from django.db.models import Count, Q
 from django.db.models import Sum
+from accounts import constants
+
 
 class TicketTypeSerializer(serializers.ModelSerializer):
     sold_count = serializers.ReadOnlyField()
-    event = serializers.PrimaryKeyRelatedField(read_only=True)
+    event = serializers.PrimaryKeyRelatedField(queryset=Event.objects.all())  
     id = serializers.ReadOnlyField()
 
     class Meta:
@@ -44,24 +45,24 @@ class EventCreateSerializer(serializers.Serializer):
 
         # Check if the venue is already booked for the specified date range
         if Event.objects.filter(venue__name=venue_name, start_date__lte=end_date, end_date__gte=start_date).exists():
-            raise serializers.ValidationError(_("Venue is already booked for the specified date range"))
+            raise serializers.ValidationError(_(constants.ERROR_VENUE_BOOKED))
 
         # Check if an event with the same name already exists
         if Event.objects.filter(event_name=attrs['event_name']).exists():
-            raise serializers.ValidationError(_("An event with the same name already exists"))
+            raise serializers.ValidationError(_(constants.ERROR_EVENT_EXISTS))
 
         return attrs
 
     def validate_categories(self, value):
         if not value:
-            raise serializers.ValidationError("At least one category must be provided.")
+            raise serializers.ValidationError(constants.ERROR_NO_CATEGORIES_PROVIDED)
         return value
     
     def validate_location(self, value):
         try:
             Location.objects.get(name=value)
         except Location.DoesNotExist:
-            raise serializers.ValidationError(f"Location '{value}' does not exist.")
+            raise serializers.ValidationError(constants.ERROR_LOCATION_NOT_FOUND)
         return value
     
 
@@ -105,11 +106,6 @@ class EventCreateSerializer(serializers.Serializer):
 
 
 
-class EventRetrieveSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Event
-        fields = '__all__'
-
 class EventUpdateSerializer(serializers.Serializer):
     venue = serializers.CharField(max_length=255, required=True)
     location = serializers.CharField(max_length=255, required=False)
@@ -139,7 +135,7 @@ class EventUpdateSerializer(serializers.Serializer):
                 location = Location.objects.get(name=location_name)
                 attrs['location'] = location
             except Location.DoesNotExist:
-                raise serializers.ValidationError(f"Location '{location_name}' does not exist.")
+                raise serializers.ValidationError(constants.ERROR_LOCATION_NOT_FOUND)
 
         if Venue_name:
             venue, _ = Location.objects.get_or_create(name=Venue_name)
@@ -155,7 +151,7 @@ class EventUpdateSerializer(serializers.Serializer):
         # Check if the venue is already booked for the specified date range
         if Venue_name and (start_date or end_date):
             if Event.objects.filter(venue=venue, start_date__lte=end_date, end_date__gte=start_date).exclude(pk=self.instance.pk).exists():
-                raise serializers.ValidationError(_("venue is already booked for the specified date range"))
+                raise serializers.ValidationError(_(constants.ERROR_VENUE_BOOKED))
 
         return attrs
 
@@ -178,6 +174,8 @@ class EventUpdateSerializer(serializers.Serializer):
         for category_name in categories_data:
             category = Category.objects.get(name=category_name)
             instance.categories.add(category)
+
+        
 
         return instance
 
@@ -233,10 +231,10 @@ class TicketBookingSerializer(serializers.ModelSerializer):
         # Check if there are enough available tickets before booking
         available_tickets = ticket_type.count - ticket_type.sold_count
         if ticket_count > available_tickets:
-            raise serializers.ValidationError("Not enough tickets available for booking.")
+            raise serializers.ValidationError(constants.ERROR_NOT_ENOUGH_TICKETS)
         
         if ticket_count > 5:
-            raise serializers.ValidationError("You can only book up to 5 tickets.")
+            raise serializers.ValidationError(constants.ERROR_MAX_TICKETS_EXCEEDED)
 
         return attrs
 
@@ -333,13 +331,6 @@ class TrendingEventSerializer(serializers.ModelSerializer):
 
 
 
-
-
-
-
-
-
-
 class UserTicketDetailsSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username')
     email = serializers.EmailField(source='user.email')
@@ -356,6 +347,18 @@ class UserTicketDetailsSerializer(serializers.ModelSerializer):
 
 
 
+#event retrieve serializer -------
+
+# class EventRetrieveSerializer(serializers.ModelSerializer):
+#     ticket_types = serializers.SerializerMethodField()
+
+#     class Meta:
+#         model = Event
+#         fields = '__all__'
+
+#     def get_ticket_types(self, obj):
+#         ticket_types_data = TicketTypeSerializer(obj.ticket_types, many=True).data
+#         return ticket_types_data
 
 
 

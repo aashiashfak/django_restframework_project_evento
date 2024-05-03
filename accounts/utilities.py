@@ -172,4 +172,4 @@ def validate_and_format_phone_number(phone_number):
         return formatted_number
     except NumberParseException:
         raise serializers.ValidationError(constants.INVALID_PHONE_NUMBER)
-    
+

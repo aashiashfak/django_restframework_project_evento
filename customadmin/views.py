@@ -19,6 +19,7 @@ from events.serializers import EventSerializer
 from events.models import Event
 from accounts.models import CustomUser,Vendor
 from accounts import constants
+from django.core.cache import cache
 
 class SuperUserLoginView(APIView):
     """
@@ -51,16 +52,17 @@ class CategoryListCreateAPIView(generics.ListCreateAPIView):
     Only superusers are allowed to access this view.
     """
 
-    # permission_classes=[IsSuperuser,IsAuthenticated]
+    permission_classes=[IsSuperuser,IsAuthenticated]
     serializer_class = CategorySerializer
 
     def get_queryset(self):
-        return cached_queryset('categories_queryset', lambda: Category.objects.all(),timeout=60)
+        return cached_queryset('categories_queryset', lambda: Category.objects.all(),timeout=500)
     
     def get(self, request):
         return self.list(request)
 
     def post(self, request):
+        cache.delete('categories_queryset')
         return self.create(request)
     
 class CategoryRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
@@ -94,12 +96,13 @@ class LocationListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = LocationSerializer
 
     def get_queryset(self):
-        return cached_queryset('Location_queryset', lambda: Location.objects.all(),timeout=60)
+        return cached_queryset('Location_queryset', lambda: Location.objects.all(),timeout=3600)
 
     def get(self, request):
         return self.list(request)
 
     def post(self, request):
+        cache.delete('Location_queryset')
         return self.create(request)
     
 class LocationRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
@@ -130,34 +133,44 @@ class AdminDashboardView(APIView):
     total vendors, total categories, and a list of the latest 5 new events.
     """
     def get(self, request):
-        # Fetch statistics
-        completed_events = Event.objects.filter(status='completed').count()
-        total_events = Event.objects.count()
-        total_users = CustomUser.objects.count()
-        total_vendors = CustomUser.objects.filter(is_vendor=True).count()
-        total_categories = Category.objects.count()
 
-        new_events = cached_queryset(
-            'admin_event_listing',
-            lambda: Event.objects.select_related(
-                    'venue','location'
-                ).prefetch_related(
-                    'categories','ticket_types','vendor'
-                ).order_by('-start_date'),
-            timeout=60
-        )
+        data = cache.get('admin_dashboard_data')
+        if data is not None:
+            print('fetched from cache')
+
+        if data is None:
+            print('fetched from db')
         
-        # Serialize data
-        serializer = EventSerializer(new_events, many=True, context={'request': request})
+            completed_events = Event.objects.filter(status='completed').count()
+            total_events = Event.objects.count()
+            total_users = CustomUser.objects.count()
+            total_vendors = CustomUser.objects.filter(is_vendor=True).count()
+            total_categories = Category.objects.count()
 
-        data = {
-            'completed_events': completed_events,
-            'total_events': total_events,
-            'total_users': total_users,
-            'total_vendors': total_vendors,
-            'total_categories': total_categories,
-            'new_events': serializer.data,
-        }
+            new_events = cached_queryset(
+                'admin_event_listing',
+                lambda: Event.objects.select_related(
+                        'venue','location'
+                    ).prefetch_related(
+                        'categories','ticket_types','vendor'
+                    ).order_by('-start_date'),
+                timeout=3600
+            )
+
+        # Serialize data
+            serializer = EventSerializer(new_events, many=True, context={'request': request})
+
+            data = {
+                'completed_events': completed_events,
+                'total_events': total_events,
+                'total_users': total_users,
+                'total_vendors': total_vendors,
+                'total_categories': total_categories,
+                'new_events': serializer.data,
+            }
+
+            cache.set('admin_dashboard_data', data, timeout=3600) 
+
 
         return Response(data)
     

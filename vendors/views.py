@@ -298,12 +298,14 @@ from events.serializers import (
     EventSerializer,
     EventUpdateSerializer,
     TicketTypeSerializer,
-    UserTicketDetailsSerializer
+    UserTicketDetailsSerializer,
+    TicketTypeCreateSerializer
 
 )
 from django.db.models import Sum
 from customadmin.utilities import cached_queryset
 from django.core.cache import cache
+from django.db.models import Count
 
 
  
@@ -376,6 +378,7 @@ class CreateEventView(APIView):
             serializer.validated_data['vendor_id'] = request.user.id  
 
             serializer.save()
+            cache.delete('admin_event_listing')
             
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
@@ -403,6 +406,7 @@ class VendorEventDetailView(APIView):
         serializer = EventUpdateSerializer(instance=event, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
+            cache.delete('admin_event_listing')
             return Response(serializer.data)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -410,7 +414,8 @@ class VendorEventDetailView(APIView):
     def delete(self, request, event_id):
         event = get_object_or_404(Event, pk=event_id, vendor=request.user)
         event.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        cache.delete('admin_event_listing')
+        return Response({"message": f"Event {event.event_name} deleted succussfully"},status=status.HTTP_204_NO_CONTENT)
     
 
 
@@ -419,7 +424,7 @@ class TicketTypeListCreateAPIView(generics.ListCreateAPIView):
     API view for listing and creating ticket types associated 
     with events of the authenticated vendor.
     """
-    serializer_class = TicketTypeSerializer
+    serializer_class = TicketTypeCreateSerializer
     permission_classes = [IsAuthenticated, IsVendor]
 
     def get_queryset(self):
@@ -453,7 +458,6 @@ class VendorDashboardAPIView(APIView):
     """
     permission_classes = [IsAuthenticated, IsVendor]
 
-
     def get(self, request):
         vendor = request.user
 
@@ -464,11 +468,19 @@ class VendorDashboardAPIView(APIView):
 
         if data is None:
             print('fetched from db')
+
             total_events_count = Event.objects.filter(vendor=vendor).count()
+
             completed_events_count = Event.objects.filter(vendor=vendor, status='completed').count()
-            total_tickets_count = TicketType.objects.filter(event__vendor=vendor).aggregate(total_tickets_count=Sum('count'))['total_tickets_count']
+
+            total_tickets_count = TicketType.objects.filter(
+                event__vendor=vendor).aggregate(total_tickets_count=Sum('count'))['total_tickets_count']
+            
             booked_tickets_count = Ticket.objects.filter(ticket_type__event__vendor=vendor, ticket_status='active').count()
-            total_earnings = Ticket.objects.filter(ticket_type__event__vendor=vendor, ticket_status='active').aggregate(total_earnings=Sum('ticket_price'))['total_earnings']
+            
+            total_earnings = Ticket.objects.filter(
+                ticket_type__event__vendor=vendor,
+                ticket_status='active').aggregate(total_earnings=Sum('ticket_price'))['total_earnings']
 
             # Construct data dictionary
             data = {
@@ -489,6 +501,7 @@ class VendorBookedUsersAPIView(APIView):
     """
     API view to get all users who booked a vendor's events along with their ticket details and event names.
     """
+    permission_classes=[IsVendor]
     def get(self, request):
         # Query all tickets booked by users for the vendor's events
         booked_tickets = cached_queryset(
@@ -502,3 +515,46 @@ class VendorBookedUsersAPIView(APIView):
         serializer = UserTicketDetailsSerializer(booked_tickets, many=True)
 
         return Response(serializer.data)
+    
+
+
+
+class TicketCountGraphAPIView(APIView):
+    """
+    API endpoint to retrieve ticket count data for analytics.
+    This endpoint allows vendors to retrieve ticket count data for the last 7 days,
+    providing insights into the number of tickets sold each day.
+    """
+    permission_classes = [IsAuthenticated, IsVendor]
+
+    def get(self, request):
+        
+        vendor = request.user  # Assuming user model has vendor_details field
+        
+        # Get the current date and time
+        current_date = timezone.now()
+        
+        # Calculate the start date for the beginning of the current week (Sunday)
+        start_of_week = current_date - timedelta(days=current_date.weekday())
+        
+        # Initialize a dictionary to hold ticket counts for each day of the week
+        ticket_counts_by_day = {}
+        
+        # Query for ticket count data for each day of the week
+        for i in range(7):
+            # Calculate the date for the current day of the week
+            date = start_of_week + timedelta(days=i)
+            
+            # Query for ticket count for the current day of the week
+            ticket_count = Ticket.objects.filter(
+                booking_date__date=date,
+                ticket_type__event__vendor=vendor, 
+                ticket_status='pending'
+            ).aggregate(
+                ticket_count=Count('id')
+            )['ticket_count']
+            
+            # Store the ticket count in the dictionary
+            ticket_counts_by_day[date.strftime('%A')] = ticket_count
+        
+        return Response(ticket_counts_by_day)

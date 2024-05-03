@@ -80,8 +80,9 @@ class EventByLocationAPIView(generics.ListAPIView):
             # return Event.objects.filter(location=location_id)
             return cached_queryset(
                 'events_by_location',
-                lambda: Event.objects.prefetch_related(
-                    'venue','location','vendor','categories','ticket_types').filter(location=location_id),
+                lambda: Event.objects.select_related(
+                    'venue','location','vendor__vendor_details__user'
+                ).prefetch_related('categories','ticket_types').filter(location=location_id),
                 timeout=60
             )
         else:
@@ -99,8 +100,9 @@ class EventDetailAPIView(generics.RetrieveAPIView):
             try:
                 return cached_queryset(
                     'event_detail',
-                    lambda: Event.objects.prefetch_related(
-                        'venue','location','vendor','categories','ticket_types').get(id=event_id),
+                    lambda: Event.objects.select_related(
+                        'venue','location','vendor__vendor_details__user'
+                    ).prefetch_related('categories','ticket_types').get(id=event_id),
                     timeout=60
                 )
             except Event.DoesNotExist:
@@ -133,8 +135,10 @@ class EventListAPIView(generics.ListAPIView):
     def get_queryset(self):
         return cached_queryset(
             'active_events',
-            lambda: Event.objects.prefetch_related(
-                'venue','location','vendor','categories','ticket_types',).filter(status='active'),
+            lambda: Event.objects.select_related(
+                'venue','location','vendor__vendor_details__user'
+            ).prefetch_related(
+                'categories','ticket_types').filter(status='active'),
             timeout=60
         )
 
@@ -162,8 +166,6 @@ class TicketBookingAPIView(APIView):
     """
     API view for booking tickets.
     """
-
-    
     def post(self, request, *args, **kwargs):
 
         if not request.user.is_authenticated:
@@ -263,7 +265,6 @@ class HandleRazorpayWebhookView(APIView):
     """
     API endpoint for handling Razorpay webhooks.
     """
-
     def post(self, request):
         # Retrieve data from Razorpay webhook request
         data = request.data

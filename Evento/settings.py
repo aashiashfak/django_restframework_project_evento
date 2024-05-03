@@ -198,3 +198,21 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15), 
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),     
 }
+
+
+
+
+
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Asia/kolkata'
+
+CELERY_BEAT_SCHEDULE = {
+    'expire-events-and-tickets': {
+        'task': 'accounts.tasks.expire_events_task',
+        'schedule': 200,  # 12 hours in seconds
+    },
+}

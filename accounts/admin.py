@@ -5,7 +5,7 @@ from .models import CustomUser,PendingUser,Vendor
 
 
 class UserAdmin(admin.ModelAdmin):
-    list_display = ['username', 'email', 'phone_number', 'date_joined', 'last_login', 'is_vendor', 'is_superuser', 'is_active'] 
+    list_display = ['id','username', 'email', 'phone_number', 'date_joined', 'last_login', 'is_vendor', 'is_superuser', 'is_active'] 
 
 
 

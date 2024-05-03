@@ -12,8 +12,10 @@ from .views import (
     TicketTypeListCreateAPIView,
     TicketTypeDetailUpdateAPIView,
     VendorDashboardAPIView,
-    VendorBookedUsersAPIView
+    VendorBookedUsersAPIView,
+    TicketCountGraphAPIView
 )
+
 
 urlpatterns = [
     path('vendor/signup/', VendorSignupView.as_view(), name='vendor_signup'),
@@ -29,4 +31,5 @@ urlpatterns = [
     path('vendor/ticket-types/<int:pk>/', TicketTypeDetailUpdateAPIView.as_view(), name='ticket_type_detail_update'),
     path('vendor/dashboard/', VendorDashboardAPIView.as_view(), name='vendor_dashboard'),
     path('vendor/user-ticket-details/', VendorBookedUsersAPIView.as_view(), name='user_ticket_details'),
+     path('vendor/ticket-count-graph/', TicketCountGraphAPIView.as_view(), name='ticket_count_graph'),
 ]

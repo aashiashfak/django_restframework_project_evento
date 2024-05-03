@@ -12,12 +12,31 @@ from accounts import constants
 
 class TicketTypeSerializer(serializers.ModelSerializer):
     sold_count = serializers.ReadOnlyField()
-    event = serializers.PrimaryKeyRelatedField(queryset=Event.objects.all())  
+    event = serializers.PrimaryKeyRelatedField(read_only=True,)  
     id = serializers.ReadOnlyField()
 
     class Meta:
         model = TicketType
         fields = ['id', 'type_name', 'ticket_image', 'price', 'count', 'sold_count', 'event']
+
+
+
+class TicketTypeCreateSerializer(serializers.ModelSerializer):
+    sold_count = serializers.ReadOnlyField()
+    event = serializers.SlugRelatedField(slug_field='event_name', queryset=Event.objects.all())
+    id = serializers.ReadOnlyField()
+
+    class Meta:
+        model = TicketType
+        fields = ['id', 'type_name', 'ticket_image', 'price', 'count', 'sold_count', 'event']
+
+    def validate_event(self, value):
+        try:
+            event = Event.objects.get(event_name=value)
+        except Event.DoesNotExist:
+            raise serializers.ValidationError("Event with the provided name does not exist.")
+        return event
+
 
 
 class EventCreateSerializer(serializers.Serializer):
@@ -301,6 +320,7 @@ class TrendingEventSerializer(serializers.ModelSerializer):
     organizer_name = serializers.SerializerMethodField()
     categories = serializers.StringRelatedField(many=True)
     venue = serializers.StringRelatedField()
+    location = serializers.StringRelatedField()
 
     class Meta:
         model = Event
@@ -323,9 +343,16 @@ class TrendingEventSerializer(serializers.ModelSerializer):
             status='active',
             ticket_types__tickets__booking_date__gte=start_date,
             ticket_types__tickets__ticket_status='active'  # Filter tickets with active status
+        ).select_related(
+            'venue',
+            'location',
+            'vendor__vendor_details__user'
+        ).prefetch_related(
+            'categories',
         ).annotate(
             total_active_ticket_quantity=Sum('ticket_types__tickets__ticket_count')
         ).order_by('-total_active_ticket_quantity')[:10]
+        
 
         return trending_events
 

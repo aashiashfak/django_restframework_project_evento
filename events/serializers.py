@@ -1,6 +1,6 @@
 import datetime
 from rest_framework import serializers
-from .models import Event, TicketType, Venue, Ticket
+from .models import Event, TicketType, Venue, Ticket, WishList
 from customadmin.models import Category, Location
 from django.utils.translation import gettext_lazy as _
 from accounts.models import Vendor, CustomUser
@@ -8,7 +8,7 @@ from .utilities import generate_qr_code
 from django.utils import timezone
 from django.db.models import Sum
 from accounts import constants
-
+from customadmin.utilities import cached_queryset
 
 class TicketTypeSerializer(serializers.ModelSerializer):
     sold_count = serializers.ReadOnlyField()
@@ -233,6 +233,34 @@ class EventSerializer(serializers.ModelSerializer):
         return None
 
 
+class WishListSerializer(serializers.ModelSerializer):
+    """
+    Serializer for WishList model.
+    """
+    class Meta:
+        model = WishList
+        fields = ['id', 'user', 'event', 'added_at']
+
+    def create(self, validated_data):
+        """
+        Custom create method to handle adding events to user's wish list.
+        """
+        user = self.context['request'].user
+        event_id = self.context['event_id']
+        
+        try:
+            event = Event.objects.get(pk=event_id)
+        except Event.DoesNotExist:
+            raise serializers.ValidationError("Event does not exist")
+        
+        existing_wishlist = WishList.objects.filter(user=user, event=event)
+        if existing_wishlist.exists():
+            raise serializers.ValidationError("Event already exists in wishlist")
+        
+        wishlist = WishList.objects.create(user=user, event=event)
+        return wishlist
+
+
 
 from django.db import transaction
 
@@ -246,6 +274,9 @@ class TicketBookingSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         ticket_count = attrs['ticket_count']
         ticket_type = self.context['ticket_type']
+
+        if ticket_type.event.status != 'active':
+            raise serializers.ValidationError("Event is not currently active.")
 
         # Check if there are enough available tickets before booking
         available_tickets = ticket_type.count - ticket_type.sold_count
@@ -339,19 +370,23 @@ class TrendingEventSerializer(serializers.ModelSerializer):
         start_date = timezone.now() - timezone.timedelta(days=30)
 
         # Fetch the top trending active events in the last 30 days
-        trending_events = Event.objects.filter(
-            status='active',
-            ticket_types__tickets__booking_date__gte=start_date,
-            ticket_types__tickets__ticket_status='active'  # Filter tickets with active status
-        ).select_related(
-            'venue',
-            'location',
-            'vendor__vendor_details__user'
-        ).prefetch_related(
-            'categories',
-        ).annotate(
-            total_active_ticket_quantity=Sum('ticket_types__tickets__ticket_count')
-        ).order_by('-total_active_ticket_quantity')[:10]
+        trending_events = cached_queryset(
+            'trending_events',
+            lambda: Event.objects.filter(
+                    status='active',
+                    ticket_types__tickets__booking_date__gte=start_date,
+                    ticket_types__tickets__ticket_status='active'  # Filter tickets with active status
+                ).select_related(
+                    'venue',
+                    'location',
+                    'vendor__vendor_details__user'
+                ).prefetch_related(
+                    'categories',
+                ).annotate(
+                    total_active_ticket_quantity=Sum('ticket_types__tickets__ticket_count')
+                ).order_by('-total_active_ticket_quantity')[:10],
+            timeout=30
+        )
         
 
         return trending_events

@@ -10,6 +10,7 @@ from .views import (
     CancelTicketAPIView,
     HandleRazorpayWebhookView,
     TrendingEventAPIView,
+    WishListAPIView
 )
 
 urlpatterns = [
@@ -23,6 +24,8 @@ urlpatterns = [
     path('cancel-ticket/<int:ticket_id>/', CancelTicketAPIView.as_view(), name='cancel_ticket'),
     path('api/handle-razorpay-webhook/', HandleRazorpayWebhookView.as_view(), name='handle-razorpay-webhook'),
     path('trending-events/', TrendingEventAPIView.as_view(), name='trending-events'),
+    path('wishlist/', WishListAPIView.as_view(), name='wishlist'),
+    path('wishlist/<int:event_id>/', WishListAPIView.as_view(), name='wishlist-detail'),
 
 
 ]

@@ -29,14 +29,15 @@
 import json
 from rest_framework import generics
 from rest_framework import filters
-from .models import Event , TicketType ,Ticket,Payment
+from .models import Event , TicketType ,Ticket, Payment, WishList
 from .serializers import (
     EventSerializer,
     TicketTypeSerializer,
     TicketBookingSerializer,
     PaymentConfirmationSerializer,
     TicketSerializer,
-    TrendingEventSerializer
+    TrendingEventSerializer,
+    WishListSerializer
 )
 from customadmin.serializers import LocationSerializer
 from customadmin.models import Location
@@ -141,6 +142,53 @@ class EventListAPIView(generics.ListAPIView):
                 'categories','ticket_types').filter(status='active'),
             timeout=60
         )
+
+
+
+
+class WishListAPIView(APIView):
+    """
+    API view for listing, creating, and deleting wishlist items.
+    """
+    permission_classes=[IsAuthenticated]
+    def post(self, request, event_id, *args, **kwargs):
+        """
+        Adds an event to the user's wish list.
+        """
+        user = request.user
+        data = {'user': user.id, 'event': event_id}
+        serializer = WishListSerializer(data=data, context={'request': request, 'event_id': event_id})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, event_id):
+        """
+        Deletes a wishlist item by ID.
+        """
+        try:
+            wishlist_item = WishList.objects.get(event=event_id, user=request.user)
+            wishlist_item.delete()
+            return Response({"message": "Wishlist item deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+        except WishList.DoesNotExist:
+            return Response({"error": "Wishlist item not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    def get(self, request):
+        """
+        Retrieves the authenticated user's wish list items.
+        """
+        user = request.user
+
+        wishlist_items = cached_queryset(
+            'user_wishlist',
+            lambda: WishList.objects.filter(user=user),
+            timeout=300
+        )
+
+        serializer = WishListSerializer(wishlist_items, many=True)
+        return Response(serializer.data)
+    
 
 
 class TicketTypeListAPIView(generics.ListAPIView):

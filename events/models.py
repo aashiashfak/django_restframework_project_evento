@@ -95,3 +95,8 @@ class Payment(models.Model):
     order_date = models.DateTimeField(auto_now_add=True)
 
 
+class WishList(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    event = models.ForeignKey(Event, on_delete=models.CASCADE)
+    added_at = models.DateTimeField(auto_now_add=True)
+

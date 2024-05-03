@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Event, TicketType, Venue, Ticket, Payment
+from .models import Event, TicketType, Venue, Ticket, Payment, WishList
 # from customadmin.models import Location
 
 @admin.register(Venue)
@@ -10,7 +10,7 @@ class VenueAdmin(admin.ModelAdmin):
 
 @admin.register(TicketType)
 class TicketTypeAdmin(admin.ModelAdmin):
-    list_display = ['type_name', 'ticket_image', 'price', 'count','sold_count', 'event']
+    list_display = ['id','type_name', 'ticket_image', 'price', 'count','sold_count', 'event']
     search_fields = ['type_name']
 
 @admin.register(Ticket)
@@ -47,3 +47,7 @@ class EventAdmin(admin.ModelAdmin):
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
     list_display = ['order_id']
+
+@admin.register(WishList)
+class WishListAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'event',]

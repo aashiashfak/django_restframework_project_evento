@@ -6,11 +6,13 @@ from django.conf import settings
 from .models import CustomUser
 import random
 from django.utils import timezone
-import requests
+import requests as req
 import phonenumbers
 from phonenumbers.phonenumberutil import NumberParseException
 from rest_framework import serializers
 from .import constants
+from rest_framework.exceptions import AuthenticationFailed
+
 
 
 
@@ -28,47 +30,60 @@ class Google_signin():
 
         Returns User data if validation is successful, otherwise None.
         """
+        print('entered in validate fn')
         try:
-            id_info=id_token.verify_oauth2_token(acess_token,requests.Request())
+            id_info=id_token.verify_oauth2_token(acess_token,requests.Request(),settings.GOOGLE_CLIENT_ID)
+            print('id_info..........',id_info)
             if 'accounts.google.com' in id_info['iss']:
                 return id_info
         except Exception as e:
             return None
         
-def login_google_user(email, password):
+
+def login_google_user(email):
     """
     Authenticate and login a user using Google credentials.
 
     Returns User information along with access and refresh tokens.
     """
-    user=authenticate(email=email,password=password)
-    user_tokens=user.tokens()
+    user = CustomUser.objects.filter(email=email).first()
+    print(user)
+    print(email)
+    if not user:
+        raise AuthenticationFailed("Invalid login credentials")
+    
+
+    user_tokens = user.tokens
+    print('haaai')
+    print(user_tokens)
     return {
-       'email':user.email,
-       'username':user.username,
-       'access_token':str(user_tokens.get('access')),
-       'refresh_token':str(user_tokens.get('refresh'))
+       'email': user.email,
+        'username': user.username,
+        'access_token': user_tokens['access'],
+        'refresh_token': user_tokens['refresh']
     }
-        
-def register_google_user(email,username):
+
+
+
+def register_google_user(email, username):
     """
     Register a new user with Google credentials.
 
     Returns User information along with access and refresh tokens.
     """
-    user=CustomUser.objects.filter(email=email)
+    user = CustomUser.objects.filter(email=email)
     if user.exists():
-        login_google_user(email, settings.CUSTOM_PASSWORD_FOR_AUTH)
-    else:   
-        new_user={
-            'email':email,
-            'username':username,
-            'password':settings.CUSTOM_PASSWORD_FOR_AUTH
+        return login_google_user(email)
+    else:
+        new_user = {
+            'email': email,
+            'username': username,
+            'password': settings.CUSTOM_PASSWORD_FOR_AUTH
         }
-        register_user=CustomUser.objects.create_user(**new_user)
-        register_user.is_active=True
+        register_user = CustomUser.objects.create_user(**new_user)
+        register_user.is_active = True
         register_user.save()
-        login_google_user(email, settings.CUSTOM_PASSWORD_FOR_AUTH)
+        return login_google_user(email)
         
 
 #phone number login utilities
@@ -92,7 +107,7 @@ def send_otp(phone_number, otp):
 
     baseurl = 'https://instantalerts.co/api/web/send/?apikey='+apikey
     url= baseurl+'&sender='+sender+'&to='+mobileno+'&message='+message+'&format=json'
-    response = requests.get(url)
+    response = req.get(url)
 
 # def send_otp(phone_number, otp):
 #     """

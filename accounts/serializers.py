@@ -25,6 +25,7 @@ class GoogleSignInSerializer(serializers.Serializer):
         Validate the access token and register the user if valid.
         """
         user_data=Google_signin.validate(access_token)
+        print('userdata...........',user_data)
         try:
             user_data['sub']  
         except:

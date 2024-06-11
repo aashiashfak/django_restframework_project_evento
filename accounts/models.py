@@ -7,6 +7,9 @@ from django.conf import settings
 
 
 
+from rest_framework_simplejwt.tokens import RefreshToken
+
+
 
 email_validator = EmailValidator()
 
@@ -33,6 +36,18 @@ class CustomUser(AbstractBaseUser,PermissionsMixin):
 # class VendorDetails(models.Model):
 
     objects = CustomUserManager()
+
+
+    @property
+    def tokens(self) -> dict[str,str]:
+        print('reached in gen tokens')
+        
+        referesh = RefreshToken.for_user(self)
+        
+        return{
+           'refresh': str(referesh),
+            'access': str(referesh.access_token),
+        } 
 
     def __str__(self):
         if self.username:

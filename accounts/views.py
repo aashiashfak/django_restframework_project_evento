@@ -71,6 +71,7 @@ class EmailOTPRequestView(APIView):
             email = serializer.validated_data.get('email')
             if email:
                 request.session['email'] = email
+                print("stored email in session:",email)
                 username = email.split('@')[0] 
                 otp = generate_otp()
                 print(f"your otp is {otp}")
@@ -115,7 +116,10 @@ class OTPVerificationEmailView(APIView):
         serializer = OTPVerificationSerializer(data=request.data)
         if serializer.is_valid():
             otp = serializer.validated_data.get('otp')
-            email = request.session.get('email')
+            print(otp)
+            # email = request.session.get('email')
+            email = serializer.validated_data.get('email')
+            print("Retrieved email from serializer:",email)
             if not email:
                 return Response(
                     {"error": constants.EMAIL_NOT_FOUND_ERROR},
@@ -230,7 +234,7 @@ class OTPVerificationView(APIView):
         serializer = OTPVerificationSerializer(data=request.data)
         if serializer.is_valid():
             otp = serializer.validated_data.get('otp')
-            phone_number = request.session.get('phone_number')
+            phone_number = serializer.validated_data.get('phone_number')
             if otp and phone_number:
                 try:
                     pending_user = PendingUser.objects.get(

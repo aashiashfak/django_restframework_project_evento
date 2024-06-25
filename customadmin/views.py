@@ -3,14 +3,15 @@ from .serializers import (
     CategorySerializer,
     LocationSerializer,
     VendorSerializer,
-    UserSerializer
+    UserSerializer,
+    BannerSerializer
 )
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework import generics, mixins
-from .models import Category,Location
+from .models import Category,Location,Banner
 from accounts.permissions import IsSuperuser
 from rest_framework.permissions import IsAuthenticated
 from .utilities import cached_queryset
@@ -124,6 +125,45 @@ class LocationRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView
 
     def delete(self, request, id=None):
         return self.destroy(request, id)
+    
+
+
+class BannerListCreateApiView(generics.ListCreateAPIView):
+
+    serializer_class = BannerSerializer
+
+    def get_queryset(self):
+        return cached_queryset('Banner_queryset', lambda: Banner.objects.all(),timeout=3600)
+    
+    def get(self, request):
+        return self.list(request)
+
+    def post(self, request):
+        cache.delete('Banner_queryset')
+        return self.create(request)
+    
+    
+class BannerRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    API view for retrieving, updating, and deleting a Banner.
+    Only superusers are allowed to access this view.
+    """
+    
+    permission_classes=[IsSuperuser,IsAuthenticated]
+    serializer_class = BannerSerializer()
+    queryset = Banner.objects.all()
+    lookup_field = 'id'
+
+    def get(self, request, id=None):
+        return self.retrieve(request, id)
+
+    def put(self, request, id=None):
+        return self.update(request, id)
+
+    def delete(self, request, id=None):
+        return self.destroy(request, id)
+    
+
     
 
 class AdminDashboardView(APIView):

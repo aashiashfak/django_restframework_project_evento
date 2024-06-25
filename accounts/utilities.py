@@ -176,6 +176,7 @@ def validate_and_format_phone_number(phone_number):
     Returns the formatted phone number or raises a validation error.
     """
     try:
+        print('entered in validating phone-number')
         parsed_number = phonenumbers.parse(phone_number, None)
         if not phonenumbers.is_valid_number(parsed_number):
             raise serializers.ValidationError(constants.ERROR_INVALID_FORMAT)

@@ -61,6 +61,8 @@ class PhoneOTPRequestSerializer(serializers.Serializer):
     """
     phone_number = serializers.CharField()
 
+    print('haai')
+
     class Meta:
         model = PendingUser
         fields = [
@@ -90,7 +92,8 @@ class OTPVerificationSerializer(serializers.Serializer):
     Serializer for OTP verification.
     """
     otp = serializers.CharField(max_length=6)
-
+    email = serializers.CharField(max_length=200, required=False)
+    phone_number = serializers.CharField(max_length=20, required=False)
 
         
 class CustomUserEmailSerializer(serializers.ModelSerializer):

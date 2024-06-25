@@ -13,3 +13,10 @@ class Location(models.Model):
     
     def __str__(self) -> str:
         return self.name
+    
+class Banner(models.Model):
+    image = models.ImageField(upload_to='banners')
+    description = models.TextField()
+
+    def __str__(self):
+        return self.description[:50]

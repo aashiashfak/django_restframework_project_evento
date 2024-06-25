@@ -205,14 +205,15 @@ class EventSerializer(serializers.ModelSerializer):
     categories = serializers.StringRelatedField(many=True)
     venue = serializers.StringRelatedField()
     vendor = serializers.SerializerMethodField()
+    location = serializers.StringRelatedField()
     ticket_types = TicketTypeSerializer(many=True, read_only=True)
 
     class Meta:
         model = Event
         fields = [
-            'id', 'event_name', 'categories', 'start_date', 'end_date', 'venue', 'location', 'event_img_1',
+            'id', 'event_name', 'categories', 'start_date', 'end_date', 'time', 'venue', 'location', 'event_img_1',
             'event_img_2', 'event_img_3', 'about', 'instruction', 'terms_and_conditions', 'vendor','status',
-            'organizer_name', 'ticket_types'
+            'organizer_name', 'ticket_types',
             ]
 
     def get_organizer_name(self, obj):

@@ -79,12 +79,9 @@ class EventByLocationAPIView(generics.ListAPIView):
 
         if location_id:
             # return Event.objects.filter(location=location_id)
-            return cached_queryset(
-                'events_by_location',
-                lambda: Event.objects.select_related(
-                    'venue','location','vendor__vendor_details__user'
-                ).prefetch_related('categories','ticket_types').filter(location=location_id),
-                timeout=60
+            return (
+                Event.objects.select_related('venue','location','vendor__vendor_details__user'
+                ).prefetch_related('categories','ticket_types').filter(location=location_id)
             )
         else:
             return Event.objects.none() 

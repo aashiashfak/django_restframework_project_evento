@@ -6,7 +6,7 @@ from datetime import timedelta
 from django.utils import timezone
 from accounts.serializers import CustomUserEmailSerializer
 from accounts import constants
-from . models import Category,Location
+from . models import Category,Location,Banner
 from accounts.models import CustomUser, Vendor
 
 class SuperuserLoginSerializer(serializers.Serializer):
@@ -64,7 +64,13 @@ class LocationSerializer(serializers.ModelSerializer):
         model = Location
         fields = ['id', 'name']
 
-
+class BannerSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Banner model.
+    """
+    class Meta:
+        model = Banner
+        fields = ['id', 'image', 'description']
 
 
 class UserSerializer(serializers.ModelSerializer):

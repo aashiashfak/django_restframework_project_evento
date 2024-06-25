@@ -53,6 +53,8 @@ from customadmin.utilities import cached_queryset
 from .utilities import initiate_razorpay_payment, verify_razorpay_signature
 from rest_framework.permissions import IsAuthenticated
 from accounts import constants
+from customadmin.serializers import CategorySerializer
+from customadmin.models import Category
 
 
 
@@ -140,6 +142,16 @@ class EventListAPIView(generics.ListAPIView):
             timeout=60
         )
 
+
+class CategoryListAPIView(generics.ListAPIView):
+    """
+    API view for listing categories.
+    """
+     
+    serializer_class = CategorySerializer
+
+    def get_queryset(self):
+        return cached_queryset('categories_queryset', lambda: Category.objects.all(), timeout=500)
 
 
 

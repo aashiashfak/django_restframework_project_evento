@@ -307,6 +307,7 @@ class TicketBookingSerializer(serializers.ModelSerializer):
             user=user,
             ticket_price=ticket_price,
             ticket_count=ticket_count,
+            ticket_status='active'
             # qr_code=generate_qr_code(qr_data)
         )
 
@@ -371,9 +372,7 @@ class TrendingEventSerializer(serializers.ModelSerializer):
         start_date = timezone.now() - timezone.timedelta(days=30)
 
         # Fetch the top trending active events in the last 30 days
-        trending_events = cached_queryset(
-            'trending_events',
-            lambda: Event.objects.filter(
+        trending_events = Event.objects.filter(
                     status='active',
                     ticket_types__tickets__booking_date__gte=start_date,
                     ticket_types__tickets__ticket_status='active'  # Filter tickets with active status
@@ -385,9 +384,7 @@ class TrendingEventSerializer(serializers.ModelSerializer):
                     'categories',
                 ).annotate(
                     total_active_ticket_quantity=Sum('ticket_types__tickets__ticket_count')
-                ).order_by('-total_active_ticket_quantity')[:10],
-            timeout=30
-        )
+                ).order_by('-total_active_ticket_quantity')[:10]
         
 
         return trending_events

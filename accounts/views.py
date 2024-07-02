@@ -256,6 +256,8 @@ class OTPVerificationView(APIView):
                             "id": user.id,
                             "phone_number": user.phone_number,
                         }
+                        if user.username:
+                            user_data["username"]= user.username
 
                         return Response({
                             "access_token": str(access_token.access_token),

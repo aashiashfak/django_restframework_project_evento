@@ -201,7 +201,7 @@ class EventUpdateSerializer(serializers.Serializer):
 
 
 class EventSerializer(serializers.ModelSerializer):
-    organizer_name = serializers.SerializerMethodField()
+    organizer_name = serializers.CharField(source='vendor.vendor_details.organizer_name', read_only=True)
     categories = serializers.StringRelatedField(many=True)
     venue = serializers.StringRelatedField()
     vendor = serializers.SerializerMethodField()
@@ -216,16 +216,16 @@ class EventSerializer(serializers.ModelSerializer):
             'organizer_name', 'ticket_types',
             ]
 
-    def get_organizer_name(self, obj):
-        try:
-            Custom_User = obj.vendor
-            if Custom_User:
-                vendor = Custom_User.vendor_details
-                if vendor:
-                    return vendor.organizer_name
-        except Vendor.DoesNotExist:
-            return None
-        return None
+    # def get_organizer_name(self, obj):
+    #     try:
+    #         Custom_User = obj.vendor
+    #         if Custom_User:
+    #             vendor = Custom_User.vendor_details
+    #             if vendor:
+    #                 return vendor.organizer_name
+    #     except Vendor.DoesNotExist:
+    #         return None
+    #     return None
     
     def get_vendor(self, obj):
 

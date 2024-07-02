@@ -55,6 +55,7 @@ from rest_framework.permissions import IsAuthenticated
 from accounts import constants
 from customadmin.serializers import CategorySerializer
 from customadmin.models import Category
+from django.db.models import F
 
 
 
@@ -98,13 +99,9 @@ class EventDetailAPIView(generics.RetrieveAPIView):
         event_id = self.kwargs.get('pk')
         if event_id:
             try:
-                return cached_queryset(
-                    'event_detail',
-                    lambda: Event.objects.select_related(
+                return Event.objects.select_related(
                         'venue','location','vendor__vendor_details__user'
-                    ).prefetch_related('categories','ticket_types').get(id=event_id),
-                    timeout=60
-                )
+                    ).prefetch_related('categories','ticket_types').get(id=event_id)
             except Event.DoesNotExist:
                 return None
         else:
@@ -130,15 +127,20 @@ class EventListAPIView(generics.ListAPIView):
     serializer_class = EventSerializer
     filterset_class = EventFilter
     filter_backends = [filters.SearchFilter,DjangoFilterBackend]
-    search_fields = ['event_name', 'venue__name', 'location__name', 'categories__name']
+    search_fields = [ 'event_name', 'venue__name', 'location__name', 'categories__name', 'organizer_name']
     
     def get_queryset(self):
         return cached_queryset(
             'active_events',
             lambda: Event.objects.select_related(
-                'venue','location','vendor__vendor_details__user'
+                'venue', 'location', 'vendor__vendor_details__user'
             ).prefetch_related(
-                'categories','ticket_types').filter(status='active'),
+                'categories', 'ticket_types'
+            ).filter(
+                status='active'
+            ).annotate(
+                organizer_name=F('vendor__vendor_details__organizer_name')
+            ),
             timeout=60
         )
 
@@ -210,11 +212,7 @@ class TicketTypeListAPIView(generics.ListAPIView):
         event_id = self.kwargs.get('event_id')
 
         if event_id:
-            return cached_queryset(
-                'tickets_of_event',
-                lambda: TicketType.objects.select_related('event').filter(event_id=event_id),
-                timeout=60
-            )
+            return TicketType.objects.select_related('event').filter(event_id=event_id)
         else:
             return TicketType.objects.none()
         

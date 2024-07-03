@@ -295,8 +295,10 @@ class ResendOTPView(APIView):
         Response object containing the result of OTP resend operation.
         """
         try:
-            email = request.session.get('email')
-            phone_number = request.session.get('phone_number')
+            email = request.data.get('email')
+            phone_number = request.data.get('phone_number')
+            print('email', email)
+            print('PhoneNumber', phone_number)
 
             if email:
                 try:

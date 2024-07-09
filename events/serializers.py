@@ -360,12 +360,13 @@ class TrendingEventSerializer(serializers.ModelSerializer):
     categories = serializers.StringRelatedField(many=True)
     venue = serializers.StringRelatedField()
     location = serializers.StringRelatedField()
+    ticket_types  = TicketTypeSerializer(many=True, read_only=True)
 
     class Meta:
         model = Event
         fields = [
             'id', 'event_name', 'total_active_ticket_quantity', 'categories', 'start_date', 'time', 'end_date', 'venue', 'location', 'event_img_1',
-            'event_img_2', 'event_img_3', 'about', 'instruction', 'terms_and_conditions', 'status',
+            'event_img_2', 'event_img_3', 'about', 'instruction', 'terms_and_conditions', 'status', 'ticket_types',
             'organizer_name',
         ]
 
@@ -403,6 +404,7 @@ class UserTicketDetailsSerializer(serializers.ModelSerializer):
     phone_number = serializers.CharField(source='user.phone_number')
     ticket_type_name = serializers.CharField(source='ticket_type.type_name')
     event_name = serializers.CharField(source='ticket_type.event.event_name')
+    
 
     class Meta:
         model = Ticket

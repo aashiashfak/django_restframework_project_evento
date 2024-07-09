@@ -188,6 +188,8 @@ EMAIL_USE_TLS = True  # Enable TLS (Transport Layer Security)
 EMAIL_HOST_USER = 'hariporter777@gmail.com'  # Your Gmail email address
 EMAIL_HOST_PASSWORD = 'mdna lafx aznk mavf'
 
+SITE_URL = 'http://localhost:5173/'
+
 
 INTERNAL_IPS = [
     "127.0.0.1",

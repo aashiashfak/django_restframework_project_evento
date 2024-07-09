@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .header {
+            background-color: #f8f9fa;
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+        .header h1 {
+            margin: 0;
+            color: #343a40;
+        }
+        .content {
+            padding: 20px;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 10px;
+            text-align: center;
+            border-top: 1px solid #ddd;
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>New Event: {{ event.event_name }}</h1>
+        </div>
+        <div class="content">
+            <img src="{{ event_image_url }}" alt="Event Image" style="max-width: 100%; height: auto;">
+            <p>Hi there,</p>
+            <p>We are excited to announce a new event organized by {{ vendor.organizer_name }}.</p>
+            <p><strong>Event Details:</strong></p>
+            <p><strong>Name:</strong> {{ event.event_name }}</p>
+            <p><strong>Date:</strong> {{ event.start_date }}</p>
+            <p><strong>Time:</strong> {{ event.time }}</p>
+            <p><strong>Description:</strong> {{ event.about }}</p>
+            <p>To learn more about the event and to view the event image, visit the link below:</p>
+            <p><a href="{{ event_url }}">View Event</a></p>
+            
+        </div>
+        <div class="footer">
+            <p>&copy; {{ current_year }} Your Company. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

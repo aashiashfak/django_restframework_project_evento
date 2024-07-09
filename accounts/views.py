@@ -11,7 +11,8 @@ from .serializers import (
     UpdateEmailSerializer,
     VerifyUpdateEmailOTPSerializer,
     UpdatePhoneSerializer,
-    VerifyUpdatePhoneOTPSerializer
+    VerifyUpdatePhoneOTPSerializer,
+    FollowSerializer
     # CustomUserPhoneSerializer,
 )
 from rest_framework.response import Response
@@ -31,7 +32,7 @@ from .utilities import (
     create_email_user
 )
 from .import constants
-# Create your views here.
+from .models import Vendor, Follow, CustomUser
 
 
 
@@ -491,3 +492,48 @@ class VerifyUpdatePhoneOTPView(APIView):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+class FollowUnfollowVendorView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, vendor_id):
+        follower = request.user
+        print('user.....',follower)
+        try:
+            vendor = Vendor.objects.get(id=vendor_id)
+            print('vendor.....',vendor)
+        except Vendor.DoesNotExist:
+            return Response({"detail": "Vendor not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+        if Follow.objects.filter(follower=follower, vendor=vendor).exists():
+            return Response({"detail": "You are already following this vendor."}, status=status.HTTP_400_BAD_REQUEST)
+
+        follow = Follow.objects.create(follower=follower, vendor=vendor)
+        serializer = FollowSerializer(follow)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def delete(self, request, vendor_id):
+        follower = request.user
+        try:
+            vendor = Vendor.objects.get(id=vendor_id)
+        except Vendor.DoesNotExist:
+            return Response({"detail": "Vendor not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+        follow = Follow.objects.filter(follower=follower, vendor=vendor)
+        if not follow.exists():
+            return Response({"detail": "You are not following this vendor."}, status=status.HTTP_400_BAD_REQUEST)
+
+        follow.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    
+class VendorFollowStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, vendor_id):
+        try:
+            vendor = Vendor.objects.get(id=vendor_id)
+            is_followed = Follow.objects.filter(follower=request.user, vendor=vendor).exists()
+            return Response({"is_followed": is_followed}, status=status.HTTP_200_OK)
+        except Vendor.DoesNotExist:
+            return Response({"detail": "Vendor not found."}, status=status.HTTP_404_NOT_FOUND)

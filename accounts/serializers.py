@@ -7,7 +7,7 @@ from .utilities import (
     register_google_user,
     validate_and_format_phone_number
 )
-from .models import CustomUser,PendingUser
+from .models import CustomUser,PendingUser,Follow
 from django.core.validators import EmailValidator
 from rest_framework.exceptions import PermissionDenied
 from events.serializers import TicketSerializer
@@ -282,7 +282,12 @@ class VerifyUpdatePhoneOTPSerializer(serializers.Serializer):
 
     
 
-
+class FollowSerializer(serializers.ModelSerializer):
+    
+     class Meta:
+        model = Follow
+        fields = ['id', 'follower', 'vendor', 'created_at']
+        read_only_fields = ['id', 'created_at']
 
     
 

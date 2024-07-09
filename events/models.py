@@ -3,6 +3,7 @@ from django.db import models
 from customadmin.models import Location, Category
 import uuid
 from accounts.models import CustomUser
+from django.core.cache import cache
 
 class Venue(models.Model):
     name = models.CharField(max_length=255)
@@ -74,6 +75,7 @@ class Event(models.Model):
         blank=True,
         related_name='events'
     )
+    location_url = models.URLField(max_length=200, null=True, blank=True, default=None)
     event_img_1 = models.ImageField(upload_to='event_images/',null=True, blank=True)
     event_img_2 = models.ImageField(upload_to='event_images/', null=True, blank=True)
     event_img_3 = models.ImageField(upload_to='event_images/', null=True, blank=True)
@@ -82,6 +84,16 @@ class Event(models.Model):
     terms_and_conditions = models.TextField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
     vendor = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='events')
+
+
+
+    # def save(self, *args, **kwargs):
+    #     if self.pk:
+    #         original_event = Event.objects.get(pk=self.pk)
+    #         if original_event.status != self.status:
+    #             cache.delete('active_events')
+    #     super().save(*args, **kwargs)
+    
 
     def __str__(self):
         return self.event_name

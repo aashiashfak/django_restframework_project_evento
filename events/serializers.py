@@ -202,6 +202,10 @@ class EventUpdateSerializer(serializers.Serializer):
 
 class EventSerializer(serializers.ModelSerializer):
     organizer_name = serializers.CharField(source='vendor.vendor_details.organizer_name', read_only=True)
+    organizer_email = serializers.CharField(source='vendor.email', read_only=True)
+    organizer_phone = serializers.CharField(source = 'vendor.phone_number',read_only=True)
+    organizer_id = serializers.CharField(source = 'vendor.vendor_details.id',read_only=True)
+    organizer_profile_photo = serializers.CharField(source = 'vendor.profile_picture',read_only=True)
     categories = serializers.StringRelatedField(many=True)
     venue = serializers.StringRelatedField()
     vendor = serializers.SerializerMethodField()
@@ -213,7 +217,7 @@ class EventSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'event_name', 'categories', 'start_date', 'end_date', 'time', 'venue', 'location', 'event_img_1',
             'event_img_2', 'event_img_3', 'about', 'instruction', 'terms_and_conditions', 'vendor','status',
-            'organizer_name', 'ticket_types',
+            'location_url', 'organizer_id', 'organizer_name', 'organizer_email', 'organizer_phone','organizer_profile_photo', 'ticket_types',
             ]
 
     # def get_organizer_name(self, obj):
@@ -238,6 +242,8 @@ class WishListSerializer(serializers.ModelSerializer):
     """
     Serializer for WishList model.
     """
+    event = EventSerializer(read_only=True)
+
     class Meta:
         model = WishList
         fields = ['id', 'user', 'event', 'added_at']
@@ -358,7 +364,7 @@ class TrendingEventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
         fields = [
-            'id', 'event_name', 'total_active_ticket_quantity', 'categories', 'start_date', 'end_date', 'venue', 'location', 'event_img_1',
+            'id', 'event_name', 'total_active_ticket_quantity', 'categories', 'start_date', 'time', 'end_date', 'venue', 'location', 'event_img_1',
             'event_img_2', 'event_img_3', 'about', 'instruction', 'terms_and_conditions', 'status',
             'organizer_name',
         ]
@@ -369,12 +375,12 @@ class TrendingEventSerializer(serializers.ModelSerializer):
     @staticmethod
     def get_trending_events():
         # Calculate the start date for the last 30 days
-        start_date = timezone.now() - timezone.timedelta(days=30)
+        last_thirty_day = timezone.now() - timezone.timedelta(days=30)
 
         # Fetch the top trending active events in the last 30 days
         trending_events = Event.objects.filter(
                     status='active',
-                    ticket_types__tickets__booking_date__gte=start_date,
+                    ticket_types__tickets__booking_date__gte=last_thirty_day,
                     ticket_types__tickets__ticket_status='active'  # Filter tickets with active status
                 ).select_related(
                     'venue',

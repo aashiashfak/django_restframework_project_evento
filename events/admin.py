@@ -18,11 +18,11 @@ class TicketAdmin(admin.ModelAdmin):
     list_display = ['id', 'ticket_type', 'event_name', 'user', 'ticket_price', 'ticket_count', 'booking_date', 'ticket_status']
     search_fields = ['ticket_type__type_name', 'ticket_type__event__event_name']  # Updated search fields
     list_filter = ['ticket_type']
-
+    
     def event_name(self, obj):
         return obj.ticket_type.event.event_name
-
-    event_name.short_description = 'Event' 
+    event_name.admin_order_field = 'ticket_type__event__event_name'  
+    event_name.short_description = 'Event Name'
 
 
 class TicketTypeInline(admin.TabularInline):

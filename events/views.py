@@ -84,7 +84,7 @@ class EventByLocationAPIView(generics.ListAPIView):
             # return Event.objects.filter(location=location_id)
             return (
                 Event.objects.select_related('venue','location','vendor__vendor_details__user'
-                ).prefetch_related('categories','ticket_types').filter(location=location_id)
+                ).prefetch_related('categories','ticket_types').filter(location=location_id, status='active')
             )
         else:
             return Event.objects.none() 
@@ -171,6 +171,7 @@ class WishListAPIView(APIView):
         serializer = WishListSerializer(data=data, context={'request': request, 'event_id': event_id})
         if serializer.is_valid():
             serializer.save()
+            
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
@@ -191,11 +192,7 @@ class WishListAPIView(APIView):
         """
         user = request.user
 
-        wishlist_items = cached_queryset(
-            'user_wishlist',
-            lambda: WishList.objects.filter(user=user),
-            timeout=300
-        )
+        wishlist_items =  WishList.objects.filter(user=user)
 
         serializer = WishListSerializer(wishlist_items, many=True)
         return Response(serializer.data)

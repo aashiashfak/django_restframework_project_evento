@@ -9,7 +9,9 @@ from .views import (
     UpdateEmailAPIView,
     VerifyUpdateEmailOTPView,
     UpdatePhoneAPIView,
-    VerifyUpdatePhoneOTPView
+    VerifyUpdatePhoneOTPView,
+    FollowUnfollowVendorView,
+    VendorFollowStatusView,
 )
 from django.urls import path
 
@@ -26,5 +28,9 @@ urlpatterns = [
     path('verify-update-email-otp/', VerifyUpdateEmailOTPView.as_view(), name='verify-email-update-otp'),
     path('update-phone/', UpdatePhoneAPIView.as_view(), name='update-phone'),
     path('verify-update-phone-otp/', VerifyUpdatePhoneOTPView.as_view(), name='verify-phone-update-otp'),
+    path('follow-unfollow/<int:vendor_id>/',FollowUnfollowVendorView.as_view(), name='follow-unfollow'),
+    path('vendors/<int:vendor_id>/follow-status/', VendorFollowStatusView.as_view(), name='vendor-follow-status'),
+    
+
     
 ]

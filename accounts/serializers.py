@@ -146,6 +146,8 @@ class UpdateEmailSerializer(serializers.Serializer):
     """
     email = serializers.EmailField(validators=[EmailValidator()])
 
+    print('entered in update otp')
+
     def validate_email(self, value):
         """
         Validate the new email address.
@@ -161,50 +163,71 @@ class UpdateEmailSerializer(serializers.Serializer):
         return value
 
 
-class VerifyUpdateEmailOTPSerializer(serializers.Serializer):
-    """
-    Serializer for verifying and updating user email address with OTP.
-    """
+class VerifyUpdateOTPSerializer(serializers.Serializer):
     otp = serializers.CharField(max_length=6)
+    email = serializers.CharField(max_length=200, required=False)
+    phone_number = serializers.CharField(max_length=20, required=False)
 
-    def validate_otp(self, value):
+    def validate(self, attrs):
         """
-        Validate OTP and email from session.
+        Validate OTP and either email or phone_number.
         """
-        request = self.context['request']
+        otp = attrs.get('otp')
+        email = attrs.get('email')
+        phone_number = attrs.get('phone_number')
 
-        # Retrieve email from session
-        email = request.session.get('email')
-        
-        if not email:
-            raise serializers.ValidationError(constants.EMAIL_NOT_FOUND_ERROR)
-        
-        try:
-            pending_user = PendingUser.objects.get(email=email)
+        print('email',email,'phone_number',phone_number)
 
-            if pending_user.otp != value:
+        if not email and not phone_number:
+            raise serializers.ValidationError("Either email or phone_number must be provided.")
+
+        if email:
+            try:
+                pending_user = PendingUser.objects.get(email=email)
+            except PendingUser.DoesNotExist:
+                raise serializers.ValidationError(constants.PENDING_USER_NOT_FOUND_ERROR)
+
+            if pending_user.otp != otp:
+                raise serializers.ValidationError(constants.INVALID_OTP)
+
+            if pending_user.expiry_time < timezone.now():
+                raise serializers.ValidationError(constants.OTP_EXPIRED_ERROR)
+
+        elif phone_number:
+            
+            try:
+                pending_user = PendingUser.objects.get(phone_number=phone_number)
+                print(pending_user)
+            except PendingUser.DoesNotExist:
+                raise serializers.ValidationError(constants.PENDING_USER_NOT_FOUND_ERROR)
+            
+            if pending_user.otp != otp:
+                print('invalid_otp')
                 raise serializers.ValidationError(constants.INVALID_OTP)
             
             if pending_user.expiry_time < timezone.now():
+                print('expired time')
                 raise serializers.ValidationError(constants.OTP_EXPIRED_ERROR)
-                
-        except PendingUser.DoesNotExist:
-            raise serializers.ValidationError(constants.PENDING_USER_NOT_FOUND_ERROR)
 
-        return value
+        return attrs
 
     def update(self, instance, validated_data):
         """
-        Update user's email.
+        Update user's email or phone number.
         """
-        request = self.context['request']
-        email= request.session.get('email')
-        pending_user = PendingUser.objects.get(email=email)
-        instance.email = email
-        instance.save()
-        pending_user.delete()
-        return instance
+        email = validated_data.get('email')
+        phone_number = validated_data.get('phone_number')
 
+        if email:
+            instance.email = email
+        elif phone_number:
+            instance.phone_number = phone_number
+
+        instance.save()
+        pending_user = PendingUser.objects.get(email=email)
+        pending_user.delete()
+        
+        return instance
 
 class UpdatePhoneSerializer(serializers.Serializer):
     """
@@ -216,6 +239,8 @@ class UpdatePhoneSerializer(serializers.Serializer):
         """
         Validate and format phone number.
         """
+        print(value)
+
         formatted_phone_number = validate_and_format_phone_number(value)
         
         user = self.context['request'].user

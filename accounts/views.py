@@ -9,15 +9,14 @@ from .serializers import (
     CustomUserEmailSerializer,
     UserProfileSerializer,
     UpdateEmailSerializer,
-    VerifyUpdateEmailOTPSerializer,
+    VerifyUpdateOTPSerializer,
     UpdatePhoneSerializer,
-    VerifyUpdatePhoneOTPSerializer,
     FollowSerializer
     # CustomUserPhoneSerializer,
 )
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework import status, permissions
+from rest_framework import status, permissions 
 from .models import PendingUser
 from datetime import timedelta
 from django.conf import settings
@@ -399,9 +398,12 @@ class UpdateEmailAPIView(APIView):
         Update email and send OTP.
         """
         serializer = UpdateEmailSerializer(data=request.data, context={'request': request})
+
+        print('entered in updated otp view ')
         
         if serializer.is_valid():
             email = serializer.validated_data.get('email')
+            print(email)
             request.session['email'] = email
             
             # Create or update PendingUser
@@ -428,7 +430,7 @@ class VerifyUpdateEmailOTPView(APIView):
     View to verify OTP and update user's email.
     """
     permission_classes = [IsAuthenticated]
-    serializer_class = VerifyUpdateEmailOTPSerializer
+    serializer_class = VerifyUpdateOTPSerializer
 
     def post(self, request):
         serializer = self.serializer_class(data=request.data, context={'request': request})
@@ -480,7 +482,7 @@ class VerifyUpdatePhoneOTPView(APIView):
     View to verify OTP and update user's phone number.
     """
     permission_classes = [IsAuthenticated]
-    serializer_class = VerifyUpdatePhoneOTPSerializer
+    serializer_class = VerifyUpdateOTPSerializer
 
     def post(self, request):
         serializer = self.serializer_class(data=request.data, context={'request': request})

@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'debug_toolbar',
     'django_filters',
+    'rest_framework_swagger',
     
 
 
@@ -84,7 +85,7 @@ ROOT_URLCONF = 'Evento.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

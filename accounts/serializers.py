@@ -102,7 +102,7 @@ class CustomUserEmailSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email']
+        fields = ['id', 'username', 'email','is_superuser', 'is_vendor']
 
 
 class UserProfileSerializer(serializers.ModelSerializer):

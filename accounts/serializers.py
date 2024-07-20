@@ -38,7 +38,16 @@ class GoogleSignInSerializer(serializers.Serializer):
 
         email=user_data['email']
         username = email.split('@')[0] 
-        return register_google_user(email, username)
+        user, tokens = register_google_user(email, username)
+        user_serializer = CustomUserEmailSerializer(user)
+        return {
+            "email": user.email,
+            "username": user.username,
+            "access_token": tokens['access'],
+            "refresh_token": tokens['refresh'],
+            "user": user_serializer.data,
+            "message": constants.USER_LOGGED_IN_SUCCESSFULLY,
+        }
 
 class EmailOTPRequestSerializer(serializers.Serializer):
     """
@@ -100,9 +109,38 @@ class CustomUserEmailSerializer(serializers.ModelSerializer):
     """
     Serializer for the custom user model with email.
     """
+    role = serializers.SerializerMethodField()
+
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email','is_superuser', 'is_vendor']
+        fields = ['id', 'username', 'email', 'role',]
+
+    def get_role(self, obj):
+        if obj.is_vendor:
+            return "vendor"
+        elif obj.is_superuser:
+            return "admin"
+        else:
+            return "user"
+
+     
+class CustomUserPhoneSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the custom user model with email.
+    """
+    role = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'username', 'phone_number', 'role',]
+
+    def get_role(self, obj):
+        if obj.is_vendor:
+            return "vendor"
+        elif obj.is_superuser:
+            return "admin"
+        else:
+            return "user"
 
 
 class UserProfileSerializer(serializers.ModelSerializer):

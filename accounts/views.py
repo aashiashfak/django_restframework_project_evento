@@ -11,8 +11,8 @@ from .serializers import (
     UpdateEmailSerializer,
     VerifyUpdateOTPSerializer,
     UpdatePhoneSerializer,
-    FollowSerializer
-    # CustomUserPhoneSerializer,
+    FollowSerializer,
+    CustomUserPhoneSerializer,
 )
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -252,18 +252,13 @@ class OTPVerificationView(APIView):
                         
                         refresh_token_expiry = timezone.now() + timedelta(days=365)
 
-                        user_data = {
-                            "id": user.id,
-                            "phone_number": user.phone_number,
-                        }
-                        if user.username:
-                            user_data["username"]= user.username
+                        user_serializer = CustomUserPhoneSerializer(user)
 
                         return Response({
                             "access_token": str(access_token.access_token),
                             "refresh_token": str(refresh_token),
                             "refresh_token_expiry": refresh_token_expiry.isoformat(), 
-                            "user": user_data,  
+                            "user": user_serializer.data,  
                             "detail": constants.USER_LOGGED_IN_SUCCESSFULLY,
                         }, status=status.HTTP_200_OK)
                     else:

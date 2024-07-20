@@ -39,30 +39,12 @@ class Google_signin():
         except Exception as e:
             return None
         
-
 def login_google_user(email):
-    """
-    Authenticate and login a user using Google credentials.
-
-    Returns User information along with access and refresh tokens.
-    """
     user = CustomUser.objects.filter(email=email).first()
-    print(user)
-    print(email)
     if not user:
         raise AuthenticationFailed("Invalid login credentials")
-    
-
     user_tokens = user.tokens
-    print('haaai')
-    print(user_tokens)
-    return {
-       'email': user.email,
-        'username': user.username,
-        'access_token': user_tokens['access'],
-        'refresh_token': user_tokens['refresh']
-    }
-
+    return user, user_tokens
 
 
 def register_google_user(email, username):

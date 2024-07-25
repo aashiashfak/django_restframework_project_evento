@@ -79,11 +79,18 @@ class CategoryRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView
 
     def get(self, request, id=None):
         return self.retrieve(request, id)
+    
 
     def put(self, request, id=None):
+        cache.delete('categories_queryset')
         return self.update(request, id)
+    
+    def patch(self, request, id=None):
+        cache.delete('categories_queryset')
+        return self.partial_update(request, id)
 
     def delete(self, request, id=None):
+        cache.delete('categories_queryset')
         return self.destroy(request, id)
 
 

@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'debug_toolbar',
     'django_filters',
     'rest_framework_swagger',
+    'drf_yasg',
     
 
 

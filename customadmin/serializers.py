@@ -56,6 +56,38 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = ['id', 'name', 'image']
 
+    def validate_name(self, value):
+        """
+        Check if the category name is unique.
+        """
+        if Category.objects.filter(name=value).exists():
+            raise serializers.ValidationError("A category with this name already exists.")
+        return value
+
+    def validate(self, data):
+        """
+        Ensure all required fields are present during creation or update.
+        """
+        errors = {}
+        
+        # Custom validation for existing instance (update scenario)
+        if self.instance:
+            if 'name' in data and Category.objects.filter(name=data['name']).exists():
+                errors['name'] = "A category with this name already exists."
+        
+        # Custom validation for new instance (creation scenario)
+        if not self.instance:
+            if not data.get('name'):
+                errors['name'] = "Name field is required."
+            if 'image' not in data or data['image'] is None:
+                errors['image'] = "Image field is required."
+        
+        if errors:
+            # Raise ValidationError with custom errors
+            raise serializers.ValidationError(errors)
+
+        return data
+
 class LocationSerializer(serializers.ModelSerializer):
     """
     Serializer for Location model.
@@ -63,6 +95,23 @@ class LocationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Location
         fields = ['id', 'name']
+
+    def validate(self, data):
+        """
+        Ensure all required fields are present during creation or update.
+        """
+        errors = []
+        
+        if 'name' not in data or not data['name'].strip():
+            errors.append("This field is required.")
+        elif Location.objects.filter(name=data['name']).exists():
+            errors.append("A location with this name already exists.")
+        
+        if errors:
+            raise serializers.ValidationError({"error": " ".join(errors)})
+
+        return data
+
 
 class BannerSerializer(serializers.ModelSerializer):
     """

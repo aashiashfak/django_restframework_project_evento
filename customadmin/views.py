@@ -128,9 +128,11 @@ class LocationRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView
         return self.retrieve(request, id)
 
     def put(self, request, id=None):
+        cache.delete('Location_queryset')
         return self.update(request, id)
 
     def delete(self, request, id=None):
+        cache.delete('Location_queryset')
         return self.destroy(request, id)
     
 
@@ -157,7 +159,7 @@ class BannerRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     """
     
     permission_classes=[IsSuperuser,IsAuthenticated]
-    serializer_class = BannerSerializer()
+    serializer_class = BannerSerializer
     queryset = Banner.objects.all()
     lookup_field = 'id'
 
@@ -165,9 +167,16 @@ class BannerRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
         return self.retrieve(request, id)
 
     def put(self, request, id=None):
+        cache.delete('Banner_queryset')
         return self.update(request, id)
+    
+    def patch(self, request, id=None):
+        cache.delete('Banner_queryset')
+        return self.partial_update(request, id)
+
 
     def delete(self, request, id=None):
+        cache.delete('Banner_queryset')
         return self.destroy(request, id)
     
 

@@ -270,6 +270,8 @@ class BlockUnblockVendorView(APIView):
         vendor.is_active = not vendor.is_active
 
         vendor.save(update_fields=['is_active'])
+        cache.delete('vendors_list')
+
 
         # Prepare response message
         if vendor.is_active:

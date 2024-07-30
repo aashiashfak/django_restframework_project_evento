@@ -113,7 +113,7 @@ class CustomUserEmailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'role',]
+        fields = ['id', 'username', 'email', 'role', 'profile_picture']
 
     def get_role(self, obj):
         if obj.is_vendor:
@@ -132,7 +132,7 @@ class CustomUserPhoneSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'phone_number', 'role',]
+        fields = ['id', 'username', 'phone_number', 'role', 'profile_picture']
 
     def get_role(self, obj):
         if obj.is_vendor:

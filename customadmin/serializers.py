@@ -125,7 +125,7 @@ class BannerSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'phone_number', 'is_active']
+        fields = ['id', 'username', 'email', 'phone_number', 'is_active', 'is_vendor' ]
 
 
 class VendorSerializer(serializers.ModelSerializer):

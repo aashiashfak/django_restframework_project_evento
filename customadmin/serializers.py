@@ -60,7 +60,9 @@ class CategorySerializer(serializers.ModelSerializer):
         """
         Check if the category name is unique.
         """
-        if Category.objects.filter(name=value).exists():
+        print(value,'this is the value from frontend')
+
+        if Category.objects.filter(name=value).exclude():
             raise serializers.ValidationError("A category with this name already exists.")
         return value
 
@@ -103,7 +105,7 @@ class LocationSerializer(serializers.ModelSerializer):
         errors = []
         
         if 'name' not in data or not data['name'].strip():
-            errors.append("This field is required.")
+            errors.append("Name field is required.")
         elif Location.objects.filter(name=data['name']).exists():
             errors.append("A location with this name already exists.")
         

@@ -4,7 +4,8 @@ from .serializers import (
     LocationSerializer,
     VendorSerializer,
     UserSerializer,
-    BannerSerializer
+    BannerSerializer,
+    TopVendorSerializer,
 )
 from rest_framework import status
 from rest_framework.response import Response
@@ -21,6 +22,8 @@ from events.models import Event
 from accounts.models import CustomUser,Vendor
 from accounts import constants
 from django.core.cache import cache
+from django.db.models import Count, Sum, Value
+from django.db.models.functions import Coalesce
 
 class SuperUserLoginView(APIView):
     """
@@ -203,6 +206,15 @@ class AdminDashboardView(APIView):
             total_vendors = CustomUser.objects.filter(is_vendor=True).count()
             total_categories = Category.objects.count()
 
+
+           
+            vendors_with_tickets = Vendor.objects.annotate(
+                total_tickets=Coalesce(
+                    Sum('user__events__ticket_types__tickets__ticket_count'),
+                    Value(0)  # Default to 0 if no tickets
+                ),
+            ).order_by('-total_tickets')[:4]
+
             new_events = cached_queryset(
                 'admin_event_listing',
                 lambda: Event.objects.select_related(
@@ -215,6 +227,7 @@ class AdminDashboardView(APIView):
 
         # Serialize data
             serializer = EventSerializer(new_events, many=True, context={'request': request})
+            top_vendor_serializer = TopVendorSerializer(vendors_with_tickets,many=True, context={'request': request})
 
             data = {
                 'completed_events': completed_events,
@@ -223,6 +236,7 @@ class AdminDashboardView(APIView):
                 'total_vendors': total_vendors,
                 'total_categories': total_categories,
                 'new_events': serializer.data,
+                'top_vendors': top_vendor_serializer.data,
             }
 
             cache.set('admin_dashboard_data', data, timeout=3600) 

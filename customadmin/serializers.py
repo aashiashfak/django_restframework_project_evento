@@ -136,3 +136,18 @@ class VendorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vendor
         fields = ['id', 'organizer_name','user' ]
+
+
+class TopVendorSerializer(serializers.ModelSerializer):
+    total_tickets = serializers.IntegerField(read_only=True)
+    total_followers = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Vendor
+        fields = ['organizer_name', 'total_tickets', 'total_followers']
+    
+    def get_total_followers(self, obj):
+        """
+        Calculate the total number of followers for the given vendor.
+        """
+        return obj.followers.count()

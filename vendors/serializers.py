@@ -10,18 +10,14 @@ from accounts import constants
 from accounts.utilities import validate_and_format_phone_number
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from accounts.serializers import CustomUserEmailSerializer
+
 
 
 email_validator = EmailValidator()
 
 
 
-
-from rest_framework import serializers
-from accounts.models import Vendor
-from django.core.validators import EmailValidator
-
-email_validator = EmailValidator()
 
 class VendorSignupSerializer(serializers.Serializer):
     organizer_name = serializers.CharField(max_length=255)
@@ -38,15 +34,23 @@ class VendorSignupSerializer(serializers.Serializer):
     password = serializers.CharField(max_length=255)
     confirm_password = serializers.CharField(max_length=255)
 
+
+
+
     def validate(self, data):
+        errors = {}
+
         password = data.get('password')
         confirm_password = data.get('confirm_password')
 
         if password != confirm_password:
-            raise serializers.ValidationError(constants.PASSWORDS_DO_NOT_MATCH_ERROR)
+            errors['password'] = constants.PASSWORDS_DO_NOT_MATCH_ERROR
         
         phone_number = data.get('phone_number')
-        validate_and_format_phone_number(phone_number)
+        try:
+            validate_and_format_phone_number(phone_number)
+        except serializers.ValidationError as e:
+            errors['phone_number'] = str(e)
 
         email = data.get('email')
         pan_card_number = data.get('pan_card_number')
@@ -54,19 +58,23 @@ class VendorSignupSerializer(serializers.Serializer):
         organizer_name = data.get('organizer_name')
 
         if email and CustomUser.objects.filter(email=email).exists():
-            raise serializers.ValidationError(constants.ERROR_EMAIL_IN_USE)
-        if phone_number and CustomUser.objects.filter(phone_number=phone_number).exists() :
-            raise serializers.ValidationError(constants.ERROR_PHONE_NUMBER_IN_USE)
-        if organizer_name and  Vendor.objects.filter(organizer_name=organizer_name).exists():
-            raise serializers.ValidationError(constants.ERROR_ORGANIZER_NAME_EXISTS)
+            errors['email'] = constants.ERROR_EMAIL_IN_USE
+        if phone_number and CustomUser.objects.filter(phone_number=phone_number).exists():
+            errors['phone_number'] = constants.ERROR_PHONE_NUMBER_IN_USE
+        if organizer_name and Vendor.objects.filter(organizer_name=organizer_name).exists():
+            errors['organizer_name'] = constants.ERROR_ORGANIZER_NAME_EXISTS
         if pan_card_number and Vendor.objects.filter(pan_card_number=pan_card_number).exists():
-            raise serializers.ValidationError(constants.ERROR_PAN_EXISTS)
+            errors['pan_card_number'] = constants.ERROR_PAN_EXISTS
         if account_number and Vendor.objects.filter(account_number=account_number).exists():
-            raise serializers.ValidationError(constants.ERROR_ACCOUNT_NUMBER_EXISTS)
-        
+            errors['account_number'] = constants.ERROR_ACCOUNT_NUMBER_EXISTS
 
+        if errors:
+            raise serializers.ValidationError(errors)
+        
         return data
-    
+
+
+
 class CustomUserSerializer(serializers.ModelSerializer):
     """
     Serializer for the CustomUser model.
@@ -79,9 +87,10 @@ class VendorSerializer(serializers.ModelSerializer):
     """
     Serializer for the Vendor model.
     """
-    user = CustomUserSerializer(read_only=True)
+    user = CustomUserEmailSerializer(read_only=True)
+    
+    
     class Meta:
-
         model = Vendor
         fields = '__all__'
 
@@ -153,7 +162,6 @@ class ChangeForgetPasswordSerializer(serializers.Serializer):
 
         return data
     
-
 class VendorProfileSerializer(serializers.ModelSerializer):
     organizer_name = serializers.CharField(required=False)
     pan_card_number = serializers.CharField(required=False)
@@ -164,32 +172,38 @@ class VendorProfileSerializer(serializers.ModelSerializer):
     bank_name = serializers.CharField(required=False)
     account_number = serializers.CharField(required=False)
     IFSC_code = serializers.CharField(required=False)
-    profile_picture = serializers.ImageField(required=False, source='user.profile_picture')    
 
     class Meta:
         model = Vendor
         fields = (
             'organizer_name', 'pan_card_number', 'address', 'contact_name', 'benificiary_name',
-            'account_type', 'bank_name', 'account_number', 'IFSC_code', 'profile_picture'
+            'account_type', 'bank_name', 'account_number', 'IFSC_code', 
         )
 
-    def validate_organizer_name(self, value):
+    def validate(self, data):
+        errors = {}
         vendor = self.context['request'].user.vendor_details
-        if Vendor.objects.exclude(pk=vendor.pk).filter(organizer_name=value).exists():
-            raise serializers.ValidationError({constants.ERROR_ORGANIZER_NAME_EXISTS})
-        return value
+        
+        # Check for existing organizer name
+        if 'organizer_name' in data:
+            if Vendor.objects.exclude(pk=vendor.pk).filter(organizer_name=data['organizer_name']).exists():
+                errors['organizer_name'] = constants.ERROR_ORGANIZER_NAME_EXISTS
+        
+        # Check for existing PAN card number
+        if 'pan_card_number' in data:
+            if Vendor.objects.exclude(pk=vendor.pk).filter(pan_card_number=data['pan_card_number']).exists():
+                errors['pan_card_number'] = constants.ERROR_PAN_EXISTS
+        
+        # Check for existing account number
+        if 'account_number' in data:
+            if Vendor.objects.exclude(pk=vendor.pk).filter(account_number=data['account_number']).exists():
+                errors['account_number'] = constants.ERROR_ACCOUNT_NUMBER_EXISTS
 
-    def validate_pan_card_number(self, value):
-        vendor = self.context['request'].user.vendor_details
-        if Vendor.objects.exclude(pk=vendor.pk).filter(pan_card_number=value).exists():
-            raise serializers.ValidationError({constants.ERROR_PAN_EXISTS})
-        return value
+        # If there are any errors, raise a ValidationError
+        if errors:
+            raise serializers.ValidationError(errors)
 
-    def validate_account_number(self, value):
-        vendor = self.context['request'].user.vendor_details
-        if Vendor.objects.exclude(pk=vendor.pk).filter(account_number=value).exists():
-            raise serializers.ValidationError({constants.ERROR_ACCOUNT_NUMBER_EXISTS})
-        return value
+        return data
 
     def update(self, instance, validated_data):
         instance.organizer_name = validated_data.get('organizer_name', instance.organizer_name)
@@ -203,12 +217,5 @@ class VendorProfileSerializer(serializers.ModelSerializer):
         instance.IFSC_code = validated_data.get('IFSC_code', instance.IFSC_code)
         
         instance.save()
-
-        profile_picture = validated_data.get('profile_picture')
-        if profile_picture:
-            user = instance.user
-            user.profile_picture = profile_picture
-            user.save(update_fields=['profile_picture'])
-
         
         return instance

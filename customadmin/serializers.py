@@ -1,3 +1,4 @@
+from events.models import Venue
 from accounts.models import CustomUser
 from django.contrib.auth import authenticate
 from rest_framework import serializers
@@ -62,7 +63,7 @@ class CategorySerializer(serializers.ModelSerializer):
         """
         print(value,'this is the value from frontend')
 
-        if Category.objects.filter(name=value).exclude():
+        if Category.objects.filter(name=value).exists():
             raise serializers.ValidationError("A category with this name already exists.")
         return value
 
@@ -89,6 +90,23 @@ class CategorySerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(errors)
 
         return data
+
+class VenueSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Venue model.
+    """
+    class Meta:
+        model = Venue
+        fields = ['id', 'name']
+
+    def validate_name(self, value):
+        """
+        Check if the venue name is unique.
+        """
+        if Venue.objects.filter(name=value).exists():
+            raise serializers.ValidationError("A venue with this name already exists.")
+        return value
+
 
 class LocationSerializer(serializers.ModelSerializer):
     """

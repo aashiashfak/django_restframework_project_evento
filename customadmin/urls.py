@@ -11,7 +11,8 @@ from .views import (
     CustomUserListView,
     BlockUnblockUserView,
     BannerListCreateApiView,
-    BannerRetrieveUpdateDestroyAPIView
+    BannerRetrieveUpdateDestroyAPIView,
+    TicketBookingDataView
     
     
 )
@@ -29,4 +30,5 @@ urlpatterns = [
     path('vendor/<int:user_id>/', BlockUnblockVendorView.as_view(), name='vendor-detail'),
     path('users-list/', CustomUserListView.as_view(), name='user-list'),
     path('user/<int:user_id>/', BlockUnblockUserView.as_view(), name='user-detail'),
+    path('events/bookings-per-day/<str:date>/', TicketBookingDataView.as_view(), name='bookings_per_day'),
 ]

@@ -11,120 +11,263 @@ from accounts import constants
 from customadmin.utilities import cached_queryset
 
 class TicketTypeSerializer(serializers.ModelSerializer):
-    sold_count = serializers.ReadOnlyField()
-    event = serializers.PrimaryKeyRelatedField(read_only=True,)  
-    id = serializers.ReadOnlyField()
 
+    sold_count = serializers.IntegerField(required=False, allow_null=True)
     class Meta:
         model = TicketType
-        fields = ['id', 'type_name', 'ticket_image', 'price', 'count', 'sold_count', 'event']
+        fields = ['id', 'type_name', 'price', 'count', 'sold_count', 'ticket_image']
+        read_only_fields = ['id']
 
 
 
 class TicketTypeCreateSerializer(serializers.ModelSerializer):
-    sold_count = serializers.ReadOnlyField()
+    sold_count = serializers.IntegerField(required=False, allow_null=True)
     event = serializers.SlugRelatedField(slug_field='event_name', queryset=Event.objects.all())
     id = serializers.ReadOnlyField()
+    count = serializers.IntegerField(required=True)
 
     class Meta:
         model = TicketType
         fields = ['id', 'type_name', 'ticket_image', 'price', 'count', 'sold_count', 'event']
 
-    def validate_event(self, value):
-        try:
-            event = Event.objects.get(event_name=value)
-        except Event.DoesNotExist:
-            raise serializers.ValidationError("Event with the provided name does not exist.")
-        return event
+    def validate(self, data):
+        errors = {}
+
+        request = self.context.get('request')
+        if request and request.method == 'POST':
+            event_name = data.get('event')
+            try:
+                event = Event.objects.get(event_name=event_name)
+                data['event'] = event  # Replace event_name with the actual event object
+            except Event.DoesNotExist:
+                errors['event'] = "Event with the provided name does not exist."
+
+        # Validate sold_count
+        sold_count = data.get('sold_count')
+        count = data.get('count') or (self.instance and self.instance.count)
+
+        
+        if sold_count is not None and count is not None and sold_count > count:
+            errors['sold_count'] = "Sold count cannot be greater than total count."
+
+        if errors:
+            raise serializers.ValidationError(errors)
+
+        return data
 
 
 
 class EventCreateSerializer(serializers.Serializer):
-    venue = serializers.CharField(max_length=255, required=True)
-    location = serializers.CharField(max_length=255, required=True)
-    categories = serializers.ListSerializer(child=serializers.CharField())
-    event_name = serializers.CharField(max_length=255)
-    time = serializers.TimeField(required=True)
-    start_date = serializers.DateTimeField()
-    end_date = serializers.DateTimeField()
+
+    venue = serializers.CharField(max_length=255, required=False)  
+    location = serializers.CharField(max_length=255, required=False)  
+    categories = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        allow_empty=True,
+    )
+    event_name = serializers.CharField(max_length=255, required=False)  
+    time = serializers.TimeField(required=False) 
+    start_date = serializers.DateTimeField(required=False)  
+    end_date = serializers.DateTimeField(required=False) 
     event_img_1 = serializers.ImageField(required=False, allow_null=True)
     event_img_2 = serializers.ImageField(required=False, allow_null=True)
     event_img_3 = serializers.ImageField(required=False, allow_null=True)
-    about = serializers.CharField()
+    about = serializers.CharField(required=False)
     instruction = serializers.CharField(required=False, allow_blank=True)
-    terms_and_conditions = serializers.CharField()
-    ticket_types = serializers.ListSerializer(child=TicketTypeSerializer())
-
-   
+    terms_and_conditions = serializers.CharField(required=False)
+    ticket_types = TicketTypeSerializer(many=True, required=False)
+    location_url = serializers.URLField(required=False)
 
     def validate(self, attrs):
-        venue_name = attrs['venue']
-        start_date = attrs['start_date']
-        end_date = attrs['end_date']
+        errors = {}
 
-        # Check if the venue is already booked for the specified date range
-        if Event.objects.filter(venue__name=venue_name, start_date__lte=end_date, end_date__gte=start_date).exists():
-            raise serializers.ValidationError(_(constants.ERROR_VENUE_BOOKED))
+        venue_name = attrs.get('venue')
+        start_date = attrs.get('start_date')
+        end_date = attrs.get('end_date')
+        event_name = attrs.get('event_name')
 
-        # Check if an event with the same name already exists
-        if Event.objects.filter(event_name=attrs['event_name']).exists():
-            raise serializers.ValidationError(_(constants.ERROR_EVENT_EXISTS))
+        print('attrs:...........................................',attrs)
+
+        # Validation logic for venue availability and event name - 
+        if venue_name and start_date and end_date:
+            if Event.objects.filter(venue__name=venue_name, start_date__lte=end_date, end_date__gte=start_date).exists():
+                print('hai....................................................................................')
+                errors['venue'] = "The venue is already booked for the specified date range."
+
+        if event_name and Event.objects.filter(event_name=event_name).exists():
+            errors['event_name'] = "An event with the same name already exists."
+
+        if errors:
+            raise serializers.ValidationError(errors)
 
         return attrs
 
-    def validate_categories(self, value):
-        if not value:
-            raise serializers.ValidationError(constants.ERROR_NO_CATEGORIES_PROVIDED)
-        return value
     
     def validate_location(self, value):
         try:
             Location.objects.get(name=value)
         except Location.DoesNotExist:
-            raise serializers.ValidationError(constants.ERROR_LOCATION_NOT_FOUND)
+            raise serializers.ValidationError("Location not found.")
         return value
     
-
     def create(self, validated_data):
         venue_name = validated_data.pop('venue')
         location_name = validated_data.pop('location')
-        categories_data = validated_data.pop('categories')
+        categories_data = validated_data.pop('categories', [])
         ticket_types_data = validated_data.pop('ticket_types')
-        
 
-        venue, _ = Venue.objects.get_or_create(name=venue_name)
+        try:
+            with transaction.atomic():
+                # Create or get venue and location - This part ensures venue and location are correctly linked
+                venue, _ = Venue.objects.get_or_create(name=venue_name)
+                location = Location.objects.get(name=location_name)
 
-        location = Location.objects.get(name=location_name)
+                validated_data['venue'] = venue
+                validated_data['location'] = location
 
-        validated_data['venue'] = venue
-        validated_data['location'] = location
-        
+                # Create event
+                event = Event.objects.create(**validated_data)
 
-        # Create event
-        event = Event.objects.create(**validated_data)
-
-        # Set categories that the user entered
-        if categories_data:
-            for category_name in categories_data:
-                try:
+                # Handle categories - This section is refactored to correctly set categories
+                categories = []
+                for category_name in categories_data:
                     category = Category.objects.get(name=category_name)
-                except Category.DoesNotExist:
-                    raise serializers.ValidationError(f"Category '{category_name}' does not exist.")
-                
-                event.categories.add(category)
-                
-        # Create ticket types
-        for ticket_type_data in ticket_types_data:
-            ticket_type = TicketType.objects.create(
-                event=event,
-                **ticket_type_data
-            )
+                    categories.append(category)
+                event.categories.set(categories)  # Set categories correctly
+
+                # Handle ticket types - This section is refactored to correctly create ticket types
+                for ticket_type_data in ticket_types_data:
+                    TicketType.objects.create(event=event, **ticket_type_data)
+
+                # Return the serialized event with explicit categories and ticket types - Modified return structure
+                event_data = {
+                    'id': event.id,
+                    'venue': event.venue.name,
+                    'location': event.location.name,
+                    'categories': [category.name for category in categories],  # Convert categories to list of names
+                    'event_name': event.event_name,
+                    'time': event.time,
+                    'start_date': event.start_date,
+                    'location_url': event.location_url,
+                    'end_date': event.end_date,
+                    'event_img_1': event.event_img_1.url if event.event_img_1 else None,
+                    'event_img_2': event.event_img_2.url if event.event_img_2 else None,
+                    'event_img_3': event.event_img_3.url if event.event_img_3 else None,
+                    'about': event.about,
+                    'instruction': event.instruction,
+                    'terms_and_conditions': event.terms_and_conditions,
+                    'ticket_types': TicketTypeSerializer(event.ticket_types.all(), many=True).data,  # Serialize ticket types
+                }
+                print('event created succussfully........')
+
+                return event_data
+
+        except Exception as e:
+            print('error while creating event_data',e)
+            raise serializers.ValidationError(str(e))  # Improved error handling
+    
+    def update(self, instance, validated_data):
+        print('Entered in event updating')
+
+        # Extract fields from validated_data
+        venue_name = validated_data.pop('venue', None)
+        location_name = validated_data.pop('location', None)
+        categories_data = validated_data.pop('categories', None)
+        ticket_types_data = validated_data.pop('ticket_types', None)
+
+        try:
+            with transaction.atomic():
+                # Update or get venue and location if provided
+                if venue_name:
+                    venue, _ = Venue.objects.get_or_create(name=venue_name)
+                    instance.venue = venue
+                    print(f"Venue set to: {venue.name}")
+
+                if location_name:
+                    location, _ = Location.objects.get_or_create(name=location_name)
+                    instance.location = location
+                    print(f"Location set to: {location.name}")
+
+                # Update event fields
+                for attr, value in validated_data.items():
+                    setattr(instance, attr, value)
+                    print(f"Set {attr} to {value}")
+
+                print('Basic event fields updated successfully')
+
+                # Update categories if provided
+                if categories_data is not None:
+                    current_categories = set(instance.categories.values_list('name', flat=True))
+                    new_categories = set(categories_data)
+
+                    # Categories to remove
+                    categories_to_remove = current_categories - new_categories
+                    if categories_to_remove:
+                        instance.categories.filter(name__in=categories_to_remove).delete()
+                        print(f"Removed categories: {categories_to_remove}")
+
+                    # Categories to add
+                    categories_to_add = new_categories - current_categories
+                    if categories_to_add:
+                        categories = [Category.objects.get_or_create(name=category_name)[0] for category_name in categories_to_add]
+                        instance.categories.add(*categories)
+                        print(f"Added categories: {categories_to_add}")
+
+                print('Categories updated successfully')
+
+                # Update ticket types if provided
+                if ticket_types_data is not None:
+                    existing_ticket_types = {ticket_type.type_name: ticket_type for ticket_type in instance.ticket_types.all()}
+                    print(f"Existing ticket types: {list(existing_ticket_types.keys())}")
+
+                    for ticket_type_data in ticket_types_data:
+                        type_name = ticket_type_data.get('type_name')
+                        print(f"Processing ticket type: {type_name}")
+
+                        if type_name in existing_ticket_types:
+                            # Update existing ticket type if any changes are detected
+                            ticket_type = existing_ticket_types.pop(type_name)
+                            updated = False
+
+                            for attr, value in ticket_type_data.items():
+                                if getattr(ticket_type, attr) != value:
+                                    setattr(ticket_type, attr, value)
+                                    updated = True
+                                    print(f"Updated {attr} for ticket type '{type_name}' to {value}")
+
+                            if updated:
+                                ticket_type.save()
+                                print(f"Ticket type '{type_name}' updated successfully")
+                            else:
+                                print(f"No changes detected for ticket type '{type_name}'")
+
+                        else:
+                            # Create new ticket type if it doesn't exist
+                            TicketType.objects.create(event=instance, **ticket_type_data)
+                            print(f"Created new ticket type: {type_name}")
+
+                    # Remove any ticket types that were not included in the update
+                    if existing_ticket_types:
+                        removed_ticket_types = list(existing_ticket_types.keys())
+                        TicketType.objects.filter(type_name__in=removed_ticket_types).delete()
+                        print(f"Removed ticket types: {removed_ticket_types}")
+
+                print('Ticket types updated successfully')
+
+                # Save the instance
+                instance.save()
+                print("Event instance saved successfully")
+            return instance
+
+        except Exception as e:
+            print(f"Error occurred: {str(e)}")
+            raise serializers.ValidationError(str(e))
 
 
-        return event
 
-
-
+        
+        
 class EventUpdateSerializer(serializers.Serializer):
     venue = serializers.CharField(max_length=255, required=True)
     location = serializers.CharField(max_length=255, required=False)
@@ -201,36 +344,157 @@ class EventUpdateSerializer(serializers.Serializer):
 
 
 class EventSerializer(serializers.ModelSerializer):
+    print('enterd in eventSerializer')
     organizer_name = serializers.CharField(source='vendor.vendor_details.organizer_name', read_only=True)
     organizer_email = serializers.CharField(source='vendor.email', read_only=True)
-    organizer_phone = serializers.CharField(source = 'vendor.phone_number',read_only=True)
-    organizer_id = serializers.CharField(source = 'vendor.vendor_details.id',read_only=True)
-    organizer_profile_photo = serializers.CharField(source = 'vendor.profile_picture',read_only=True)
-    categories = serializers.StringRelatedField(many=True)
-    venue = serializers.StringRelatedField()
+    organizer_phone = serializers.CharField(source='vendor.phone_number', read_only=True)
+    organizer_id = serializers.CharField(source='vendor.vendor_details.id', read_only=True)
+    organizer_profile_photo = serializers.CharField(source='vendor.profile_picture', read_only=True)
+    categories = serializers.SlugRelatedField(slug_field='name', queryset=Category.objects.all(), many=True)
+    # venue = serializers.SlugRelatedField(slug_field='name', queryset=Venue.objects.all())
+    venue = serializers.CharField()
+    location = serializers.SlugRelatedField(slug_field='name', queryset=Location.objects.all())
     vendor = serializers.SerializerMethodField()
-    location = serializers.StringRelatedField()
-    ticket_types = TicketTypeSerializer(many=True, read_only=True)
+    ticket_types = TicketTypeSerializer(many=True)
 
     class Meta:
         model = Event
         fields = [
             'id', 'event_name', 'categories', 'start_date', 'end_date', 'time', 'venue', 'location', 'event_img_1',
-            'event_img_2', 'event_img_3', 'about', 'instruction', 'terms_and_conditions', 'vendor','status',
-            'location_url', 'organizer_id', 'organizer_name', 'organizer_email', 'organizer_phone','organizer_profile_photo', 'ticket_types',
-            ]
+            'event_img_2', 'event_img_3', 'about', 'instruction', 'terms_and_conditions', 'vendor', 'status',
+            'location_url', 'organizer_id', 'organizer_name', 'organizer_email', 'organizer_phone', 'organizer_profile_photo', 'ticket_types',
+        ]
 
-    # def get_organizer_name(self, obj):
-    #     try:
-    #         Custom_User = obj.vendor
-    #         if Custom_User:
-    #             vendor = Custom_User.vendor_details
-    #             if vendor:
-    #                 return vendor.organizer_name
-    #     except Vendor.DoesNotExist:
-    #         return None
-    #     return None
+    def validate(self, attrs):
+        errors = {}
+        print('entered in validation')
+
+        venue_name = attrs.get('venue')
+        start_date = attrs.get('start_date')
+        end_date = attrs.get('end_date')
+        event_name = attrs.get('event_name')
+
+        print('attrs:...........................................', attrs)
+
+        
+        if venue_name and start_date and end_date:
+            if Event.objects.filter(venue__name=venue_name, start_date__lte=end_date, end_date__gte=start_date).exists():
+                print('hai....................................................................................')
+                errors['venue'] = "The venue is already booked for the specified date range."
+
+        if event_name and Event.objects.filter(event_name=event_name).exists():
+            errors['event_name'] = "An event with the same name already exists."
+
+        if errors:
+            raise serializers.ValidationError(errors)
+
+        return attrs
+
     
+    def validate_location(self, value):
+        try:
+            Location.objects.get(name=value)
+        except Location.DoesNotExist:
+            raise serializers.ValidationError("Location not found.")
+        return value
+    
+    def create(self, validated_data):
+        venue_name = validated_data.pop('venue')
+        location_name = validated_data.pop('location')
+        categories_data = validated_data.pop('categories', [])
+        ticket_types_data = validated_data.pop('ticket_types')
+
+        try:
+            with transaction.atomic():
+                # Create or get venue and location - This part ensures venue and location are correctly linked
+                print('venue:........................',venue_name)
+                venue, created = Venue.objects.get_or_create(name=venue_name)
+                if created:
+                    print(f"Created new venue: {venue.name}")
+               
+                location = Location.objects.get(name=location_name)
+
+                validated_data['venue'] = venue
+                validated_data['location'] = location
+
+                # Create event
+                event = Event.objects.create(**validated_data)
+
+                # Handle categories - This section is refactored to correctly set categories
+                categories = []
+                for category_name in categories_data:
+                    category = Category.objects.get(name=category_name)
+                    categories.append(category)
+                event.categories.set(categories)  # Set categories correctly
+
+                # Handle ticket types - This section is refactored to correctly create ticket types
+                for ticket_type_data in ticket_types_data:
+                    TicketType.objects.create(event=event, **ticket_type_data)
+
+                return event
+
+        except Exception as e:
+            print('error while creating event_data',e)
+            raise serializers.ValidationError(str(e))  # Improved error handling
+    
+    def update(self, instance, validated_data):
+        print('Entered in event updating')
+
+        # Extract fields from validated_data
+        venue_name = validated_data.pop('venue', None)
+        location_name = validated_data.pop('location', None)
+        categories_data = validated_data.pop('categories', None)
+        # ticket_types_data = validated_data.pop('ticket_types', None)
+
+        try:
+            with transaction.atomic():
+                # Update or get venue and location if provided
+                if venue_name:
+                    venue, _ = Venue.objects.get_or_create(name=venue_name)
+                    instance.venue = venue
+                    print(f"Venue set to: {venue.name}")
+
+                if location_name:
+                    location, _ = Location.objects.get_or_create(name=location_name)
+                    instance.location = location
+                    print(f"Location set to: {location.name}")
+
+                # Update event fields
+                for attr, value in validated_data.items():
+                    setattr(instance, attr, value)
+                    print(f"Set {attr} to {value}")
+
+                print('Basic event fields updated successfully')
+
+                # Update categories if provided
+                if categories_data is not None:
+                    current_categories = set(instance.categories.values_list('name', flat=True))
+                    new_categories = set(categories_data)
+
+                    # Categories to remove
+                    categories_to_remove = current_categories - new_categories
+                    if categories_to_remove:
+                        instance.categories.filter(name__in=categories_to_remove).delete()
+                        print(f"Removed categories: {categories_to_remove}")
+
+                    # Categories to add
+                    categories_to_add = new_categories - current_categories
+                    if categories_to_add:
+                        categories = [Category.objects.get_or_create(name=category_name)[0] for category_name in categories_to_add]
+                        instance.categories.add(*categories)
+                        print(f"Added categories: {categories_to_add}")
+
+                print('Categories updated successfully')
+
+                # Save the instance
+                instance.save()
+                print("Event instance saved successfully")
+            return instance
+
+        except Exception as e:
+            print(f"Error occurred: {str(e)}")
+            raise serializers.ValidationError(str(e))
+
     def get_vendor(self, obj):
 
         if obj.vendor:
@@ -288,40 +552,13 @@ class TicketBookingSerializer(serializers.ModelSerializer):
         # Check if there are enough available tickets before booking
         available_tickets = ticket_type.count - ticket_type.sold_count
         if ticket_count > available_tickets:
-            raise serializers.ValidationError(constants.ERROR_NOT_ENOUGH_TICKETS)
+            raise serializers.ValidationError("Not enough tickets available.")
         
         if ticket_count > 5:
-            raise serializers.ValidationError(constants.ERROR_MAX_TICKETS_EXCEEDED)
+            raise serializers.ValidationError("Cannot book more than 5 tickets.")
 
         return attrs
 
-    @transaction.atomic
-    def create(self, validated_data):
-        ticket_type = self.context['ticket_type']
-        user = self.context['request'].user
-
-        # Calculate the ticket price based on ticket type and count
-        ticket_count = validated_data['ticket_count']
-        ticket_price = ticket_type.price * ticket_count
-
-        # timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S%f")
-        # qr_data = f"Ticket ID: {ticket_type.id}-{user.id}-{timestamp}"
-
-        # Create the ticket instance
-        ticket = Ticket.objects.create(
-            ticket_type=ticket_type,
-            user=user,
-            ticket_price=ticket_price,
-            ticket_count=ticket_count,
-            ticket_status='active'
-            # qr_code=generate_qr_code(qr_data)
-        )
-
-        # Update the sold count of the ticket type
-        ticket_type.sold_count += ticket_count
-        ticket_type.save(update_fields=['sold_count'])
-
-        return ticket
 
 
 
@@ -340,13 +577,17 @@ class PaymentConfirmationSerializer(serializers.ModelSerializer):
 
 
 
-
 class TicketSerializer(serializers.ModelSerializer):
+    organizer_name = serializers.CharField(source='ticket_type.event.vendor.vendor_details.organizer_name', read_only=True)
+    event_name = serializers.CharField(source='ticket_type.event', read_only=True)
+    type_name = serializers.CharField(source='ticket_type.type_name', read_only=True)
+    event_date = serializers.DateTimeField(source='ticket_type.event.start_date',read_only=True)
+
+
     class Meta:
         model = Ticket
-        fields = '__all__'
-       
-
+        fields = '__all__' 
+        extra_fields = ['organizer_name', 'event_name', 'type_name', 'event_date']
 
 from django.db.models import Sum
 

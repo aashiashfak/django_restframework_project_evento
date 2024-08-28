@@ -18,7 +18,7 @@ from rest_framework.permissions import IsAuthenticated
 from .utilities import cached_queryset
 
 from events.serializers import EventSerializer
-from events.models import Event
+from events.models import Event, Ticket
 from accounts.models import CustomUser,Vendor
 from accounts import constants
 from django.core.cache import cache
@@ -347,3 +347,43 @@ class BlockUnblockUserView(APIView):
             "message": message,
             "is_active": user.is_active
         }, status=status.HTTP_200_OK)
+    
+from django.utils import timezone
+from django.db.models.functions import TruncDate
+from django.db.models import Count
+
+class TicketBookingDataView(APIView):
+    def get(self, request, date):
+        try:
+            end_date = timezone.datetime.strptime(date, '%Y-%m-%d').date()
+        except ValueError:
+            return Response({'error': 'Invalid date format'}, status=400)
+
+        # Ensure the dates are timezone-aware and set start and end times
+        end_date = timezone.make_aware(timezone.datetime.combine(end_date, timezone.datetime.max.time()))
+        start_date = timezone.make_aware(timezone.datetime.combine(end_date - timezone.timedelta(days=6), timezone.datetime.min.time()))
+
+        bookings = (
+            Ticket.objects.filter(
+                booking_date__range=[start_date, end_date]
+            )
+            .exclude(ticket_status='canceled')
+            .annotate(date=TruncDate('booking_date'))
+            .values('date')
+            .annotate(total_bookings=Sum('ticket_count'))  # Sum the ticket_count
+            .order_by('date')
+        )
+
+        # Prepare the data for the response
+        booking_data = []
+        current_date = start_date
+        while current_date <= end_date:
+            date_str = current_date.date().strftime('%Y-%m-%d')
+            booking = next((b for b in bookings if b['date'] == current_date.date()), None)
+            booking_data.append({
+                'date': date_str, 
+                'total_bookings': booking['total_bookings'] if booking else 0
+            })
+            current_date += timezone.timedelta(days=1)
+
+        return Response(booking_data)

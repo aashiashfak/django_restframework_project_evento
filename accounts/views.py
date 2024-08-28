@@ -13,6 +13,7 @@ from .serializers import (
     UpdatePhoneSerializer,
     FollowSerializer,
     CustomUserPhoneSerializer,
+    TicketSerializer
 )
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -452,15 +453,19 @@ class UpdatePhoneAPIView(APIView):
         if serializer.is_valid():
             phone_number = serializer.validated_data.get('phone_number')
             request.session['phone_number'] = phone_number
+
+            print('serializer is valid')
             
-            # Create or update PendingUser
+            # Create or update PendingUser'
             pending_user, created = PendingUser.objects.update_or_create(
-                defaults={
-                    'phone_number': phone_number,
-                    'otp': generate_otp(),
-                    'expiry_time': timezone.now() + timedelta(minutes=settings.OTP_EXPIRY_MINUTES)
-                }
-            )
+                    phone_number=phone_number,
+                    defaults={
+                        'otp': generate_otp(),
+                        'expiry_time': timezone.now() + timedelta(minutes=settings.OTP_EXPIRY_MINUTES)
+                        }
+                )
+
+            print('pending user created ')
             try:
                 send_otp(phone_number, pending_user.otp)
                 
@@ -534,3 +539,15 @@ class VendorFollowStatusView(APIView):
             return Response({"is_followed": is_followed}, status=status.HTTP_200_OK)
         except Vendor.DoesNotExist:
             return Response({"detail": "Vendor not found."}, status=status.HTTP_404_NOT_FOUND)
+        
+
+
+from rest_framework import generics,permissions    
+from events.models import Ticket
+
+class UserTicketsListView(generics.ListAPIView):
+    serializer_class = TicketSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Ticket.objects.filter(user=self.request.user).order_by('-booking_date')

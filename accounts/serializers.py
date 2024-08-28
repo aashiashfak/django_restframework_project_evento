@@ -101,6 +101,7 @@ class OTPVerificationSerializer(serializers.Serializer):
     Serializer for OTP verification.
     """
     otp = serializers.CharField(max_length=6)
+    print(otp)
     email = serializers.CharField(max_length=200, required=False)
     phone_number = serializers.CharField(max_length=20, required=False)
 
@@ -165,6 +166,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
         if CustomUser.objects.exclude(pk=user.pk).filter(username=value).exists():
             raise serializers.ValidationError({"username": constants.ERROR_USERNAME_IN_USE})
         return value
+
+        
 
     def update(self, instance, validated_data):
         """
@@ -351,6 +354,4 @@ class FollowSerializer(serializers.ModelSerializer):
         model = Follow
         fields = ['id', 'follower', 'vendor', 'created_at']
         read_only_fields = ['id', 'created_at']
-
-    
 

@@ -6,12 +6,13 @@ from .views import (
     EventDetailAPIView,
     TicketTypeListAPIView,
     TicketBookingAPIView,
-    ConfirmPaymentAPIView,
+    ConfirmTicketAPIView,
     CancelTicketAPIView,
     HandleRazorpayWebhookView,
     TrendingEventAPIView,
     WishListAPIView,
-    CategoryListAPIView
+    CategoryListAPIView,
+    VenueListApiView,
 )
 
 urlpatterns = [
@@ -20,15 +21,14 @@ urlpatterns = [
     path('list_all_events/', EventListAPIView.as_view(), name='event-list'),
     path('event_details/<int:pk>/', EventDetailAPIView.as_view(), name='event-details'),
     path('event/<int:event_id>/tickets/', TicketTypeListAPIView.as_view(), name='event_tickets'),
-    path('book-tickets/<int:ticket_id>/', TicketBookingAPIView.as_view(), name='book-tickets'),
-    path('confirm-payment/<int:ticket_id>/', ConfirmPaymentAPIView.as_view(), name='confirm-payment'),
+    path('ticket/booking/<int:ticket_id>/', TicketBookingAPIView.as_view(), name='book-tickets'),
+    path('confirm-payment/', ConfirmTicketAPIView.as_view(), name='confirm-payment'),
     path('cancel-ticket/<int:ticket_id>/', CancelTicketAPIView.as_view(), name='cancel_ticket'),
     path('api/handle-razorpay-webhook/', HandleRazorpayWebhookView.as_view(), name='handle-razorpay-webhook'),
     path('trending-events/', TrendingEventAPIView.as_view(), name='trending-events'),
     path('wishlist/', WishListAPIView.as_view(), name='wishlist'),
     path('wishlist/<int:event_id>/', WishListAPIView.as_view(), name='wishlist-detail'),
     path('categories/', CategoryListAPIView.as_view(), name='categories'),
-
-
+    path('venues/', VenueListApiView.as_view(), name='categories'),
 
 ]

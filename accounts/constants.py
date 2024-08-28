@@ -90,6 +90,7 @@ ERROR_NOT_ENOUGH_TICKETS = "Not enough tickets available for booking"
 ERROR_MAX_TICKETS_EXCEEDED = "You can only book up to 5 tickets"
 SUCCESS_TICKET_BOOKED = "Ticket booked successfully."
 ERROR_TICKET_NOT_FOUND = "Ticket not found."
+ERROR_CANNOT_CANCEL_AFTER_TWO_MINUTES='cancel time is expired you cant cancel after two minutes'
 
 #payment
 ERROR_PAYMENT_INITIATION_FAILED = "Error during payment initiation"

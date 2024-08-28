@@ -17,7 +17,6 @@ class TicketType(models.Model):
     count = models.PositiveIntegerField(default=0)
     sold_count = models.PositiveIntegerField(default=0)
     event = models.ForeignKey('Event', on_delete=models.CASCADE, related_name='ticket_types')
-    
     def __str__(self):
         return self.type_name
 
@@ -85,14 +84,11 @@ class Event(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
     vendor = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='events')
 
+    def save(self, *args, **kwargs):
+        cache.clear()
+        print('delete all the cache ')
+        super().save(*args, **kwargs)
 
-
-    # def save(self, *args, **kwargs):
-    #     if self.pk:
-    #         original_event = Event.objects.get(pk=self.pk)
-    #         if original_event.status != self.status:
-    #             cache.delete('active_events')
-    #     super().save(*args, **kwargs)
     
 
     def __str__(self):
@@ -100,11 +96,12 @@ class Event(models.Model):
 
 
 class Payment(models.Model):
-    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE)
+    ticket_type = models.ForeignKey(TicketType, on_delete=models.CASCADE,default=0)
     order_id = models.CharField(max_length=255)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, default='pending')
     order_date = models.DateTimeField(auto_now_add=True)
+    ticket_count = models.PositiveIntegerField(default=1)
 
 
 class WishList(models.Model):

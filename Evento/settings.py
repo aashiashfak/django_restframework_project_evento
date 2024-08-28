@@ -27,16 +27,18 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-4(bboyz7)neu2=z4x^n#mg$+o)@+49-ibq)@qj6^o@ioy*q5ww'
-
+SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
-
-
-
+ALLOWED_HOSTS = [
+    '127.0.0.1',
+    'localhost',
+    '413f-2405-201-f00d-380c-848c-6b64-a0fc-706f.ngrok-free.app',
+    '51.20.122.80',
+    'evento.ink',
+    'www.evento.ink',
+]
 
 # Application definition
 
@@ -105,25 +107,45 @@ WSGI_APPLICATION = 'Evento.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'evento',
+#         'HOST':'localhost',
+#         'PORT':'5432',
+#         'USER':'postgres',
+#         'PASSWORD':'088066'
+#     }
+# }
+
+
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'evento',
-        'HOST':'localhost',
-        'PORT':'5432',
-        'USER':'postgres',
-        'PASSWORD':'088066'
-    }
+  'default': {
+    'ENGINE': 'django.db.backends.postgresql',
+    'NAME': os.getenv('PGDATABASE'),
+    'USER': os.getenv('PGUSER'),
+    'PASSWORD': os.getenv('PGPASSWORD'),
+    'HOST': os.getenv('PGHOST'),
+    'PORT': os.getenv('PGPORT', 5432),
+    'OPTIONS': {
+      'sslmode': 'require',
+    },
+  }
 }
+
 
 
 #Redis Cache 
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': 'redis://127.0.0.1:6379/1',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        }
     }
 }
-
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
@@ -180,15 +202,17 @@ SPRING_EDGE_SENDER_ID=os.getenv('SPRING_EDGE_SENDER_ID')
 OTP_EXPIRY_MINUTES=1
 SMS_API_KEY=os.getenv('SMS_API_KEY')
 
-RAZORPAY_API_KEY=os.getenv('RAZORPAY_API_KEY')
-RAZORPAY_API_SECRET=os.getenv('RAZORPAY_API_SECRET')
+RAZORPAY_API_KEYS=os.getenv('RAZORPAY_API_KEYS')
+RAZORPAY_API_SECRET_KEY=os.getenv('RAZORPAY_API_SECRET_KEY')
+
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587  # Use 465 for SSL/TLS connection
 EMAIL_USE_TLS = True  # Enable TLS (Transport Layer Security)
-EMAIL_HOST_USER = 'hariporter777@gmail.com'  # Your Gmail email address
-EMAIL_HOST_PASSWORD = 'mdna lafx aznk mavf'
+EMAIL_HOST_USER =os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD =os.getenv('EMAIL_HOST_PASSWORD')
+
 
 SITE_URL = 'http://localhost:5173/'
 
@@ -210,7 +234,7 @@ REST_FRAMEWORK = {
 
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=10),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=50),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True

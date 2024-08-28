@@ -59,7 +59,7 @@ class CustomUser(AbstractBaseUser,PermissionsMixin):
 class Vendor(models.Model):
     ACCOUNT_TYPE_CHOICES = [
         ('current', 'Current Account'),
-        ('saving', 'Savings Account'),
+        ('savings', 'Savings Account'),
         ('joint', 'Joint Account'),
     ]
 
@@ -80,6 +80,8 @@ class Vendor(models.Model):
     def __str__(self):
         return self.organizer_name
     
+
+
 from django.contrib.auth.hashers import make_password
 
 class VendorManager(models.Manager):
@@ -104,6 +106,8 @@ class VendorManager(models.Manager):
             'bank_name': vendor_data.pop('bank_name'),
             'account_number': vendor_data.pop('account_number'),
             'IFSC_code': vendor_data.pop('IFSC_code'),
+            'GSTIN': vendor_data.pop('GSTIN', None),  
+            'ITR': vendor_data.pop('ITR', None),      
         }
         
         # Create Vendor

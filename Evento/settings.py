@@ -118,16 +118,18 @@ WSGI_APPLICATION = 'Evento.wsgi.application'
 #     }
 # }
 
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'evento',
-        'HOST':'localhost',
-        'PORT':'',
-        'USER':'admin',
-        'PASSWORD':'password'
+        'USER': 'admin',
+        'PASSWORD': 'password',
+        'HOST': 'localhost',
+        'PORT': '5432',  
     }
 }
+
 
 
 # DATABASES = {

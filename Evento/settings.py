@@ -205,7 +205,6 @@ SMS_API_KEY=os.getenv('SMS_API_KEY')
 RAZORPAY_API_KEYS=os.getenv('RAZORPAY_API_KEYS')
 RAZORPAY_API_SECRET_KEY=os.getenv('RAZORPAY_API_SECRET_KEY')
 
-
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587  # Use 465 for SSL/TLS connection

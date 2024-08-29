@@ -35,7 +35,7 @@ ALLOWED_HOSTS = [
     '127.0.0.1',
     'localhost',
     '413f-2405-201-f00d-380c-848c-6b64-a0fc-706f.ngrok-free.app',
-    '51.20.122.80',
+    '13.51.115.47',
     'evento.ink',
     'www.evento.ink',
 ]

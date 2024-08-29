@@ -107,32 +107,32 @@ WSGI_APPLICATION = 'Evento.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'evento',
-#         'HOST':'localhost',
-#         'PORT':'5432',
-#         'USER':'postgres',
-#         'PASSWORD':'088066'
-#     }
-# }
-
-
-
 DATABASES = {
-  'default': {
-    'ENGINE': 'django.db.backends.postgresql',
-    'NAME': os.getenv('PGDATABASE'),
-    'USER': os.getenv('PGUSER'),
-    'PASSWORD': os.getenv('PGPASSWORD'),
-    'HOST': os.getenv('PGHOST'),
-    'PORT': os.getenv('PGPORT', 5432),
-    'OPTIONS': {
-      'sslmode': 'require',
-    },
-  }
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'evento',
+        'HOST':'localhost',
+        'PORT':'5432',
+        'USER':'postgres',
+        'PASSWORD':'088066'
+    }
 }
+
+
+
+# DATABASES = {
+#   'default': {
+#     'ENGINE': 'django.db.backends.postgresql',
+#     'NAME': os.getenv('PGDATABASE'),
+#     'USER': os.getenv('PGUSER'),
+#     'PASSWORD': os.getenv('PGPASSWORD'),
+#     'HOST': os.getenv('PGHOST'),
+#     'PORT': os.getenv('PGPORT', 5432),
+#     'OPTIONS': {
+#       'sslmode': 'require',
+#     },
+#   }
+# }
 
 
 

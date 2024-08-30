@@ -42,6 +42,8 @@ ALLOWED_HOSTS = [
     'evento.ink',
 ]
 
+
+
 # Application definition
 
 INSTALLED_APPS = [

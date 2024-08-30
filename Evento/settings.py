@@ -39,6 +39,7 @@ ALLOWED_HOSTS = [
     'evento.ink',
     'www.evento.ink',
     'main.d1tth1elyk1ehq.amplifyapp.com',
+    'evento.ink',
 ]
 
 # Application definition

@@ -38,6 +38,7 @@ ALLOWED_HOSTS = [
     '13.51.115.47',
     'evento.ink',
     'www.evento.ink',
+    'main.d1tth1elyk1ehq.amplifyapp.com',
 ]
 
 # Application definition

@@ -74,7 +74,7 @@ class Event(models.Model):
         blank=True,
         related_name='events'
     )
-    location_url = models.URLField(max_length=200, null=True, blank=True, default=None)
+    location_url = models.URLField(max_length=1000, null=True, blank=True, default=None)
     event_img_1 = models.ImageField(upload_to='event_images/',null=True, blank=True)
     event_img_2 = models.ImageField(upload_to='event_images/', null=True, blank=True)
     event_img_3 = models.ImageField(upload_to='event_images/', null=True, blank=True)

@@ -119,7 +119,8 @@ class OTPVerificationEmailView(APIView):
             otp = serializer.validated_data.get('otp')
             print(otp)
             # email = request.session.get('email')
-            email = serializer.validated_data.get('email')
+            # email = serializer.validated_data.get('email')
+            email = 'hariporter777@gmail.com'
             print("Retrieved email from serializer:",email)
             if not email:
                 return Response(
@@ -550,4 +551,14 @@ class UserTicketsListView(generics.ListAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Ticket.objects.filter(user=self.request.user).order_by('-booking_date')
+        # Get the current date and time
+        now = timezone.now()
+
+        # Filter tickets for the authenticated user
+        tickets = Ticket.objects.filter(user=self.request.user)
+
+        # Update the status to 'used' for tickets where the event date has passed
+        tickets.filter(ticket_type__event__end_date__lt=now,ticket_status__in=['active']).update(ticket_status='used')
+
+        # Return the updated queryset, ordered by booking date
+        return tickets.order_by('-booking_date')

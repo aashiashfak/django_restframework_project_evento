@@ -3,6 +3,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from events.models import Event, Ticket
 
+
 # Configure logging
 logging.basicConfig(filename='C:/Users/h/Desktop/Project_1/expired_events.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 

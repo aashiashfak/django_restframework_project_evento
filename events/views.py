@@ -77,15 +77,18 @@ class EventByLocationAPIView(generics.ListAPIView):
     API view for listing events by location ID.
     """
     serializer_class = EventSerializer
+   
+
 
     def get_queryset(self):
         location_id =  self.kwargs.get('location_id')
+        now = timezone.now()
 
         if location_id:
             # return Event.objects.filter(location=location_id)
             return (
                 Event.objects.select_related('venue','location','vendor__vendor_details__user'
-                ).prefetch_related('categories','ticket_types').filter(location=location_id, status='active')
+                ).prefetch_related('categories','ticket_types').filter(location=location_id, status='active', end_date__gt=now)
             )
         else:
             return Event.objects.none() 
@@ -133,6 +136,8 @@ class EventListAPIView(generics.ListAPIView):
     pagination_class = CustomPagination
     
     def get_queryset(self):
+        now = timezone.now()
+
         return cached_queryset(
             'active_events',
             lambda: Event.objects.select_related(
@@ -140,7 +145,7 @@ class EventListAPIView(generics.ListAPIView):
             ).prefetch_related(
                 'categories', 'ticket_types'
             ).filter(
-                status='active'
+                status='active', end_date__gt=now
             ).annotate(
                 organizer_name=F('vendor__vendor_details__organizer_name')
             ),

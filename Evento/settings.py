@@ -111,28 +111,28 @@ WSGI_APPLICATION = 'Evento.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'evento',
-#         'HOST':'localhost',
-#         'PORT':'5432',
-#         'USER':'postgres',
-#         'PASSWORD':'088066'
-#     }
-# }
-
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'evento',
-        'USER': 'admin',
-        'PASSWORD': 'password',
-        'HOST': 'localhost',
-        'PORT': '5432',  
+        'HOST':'localhost',
+        'PORT':'5432',
+        'USER':'postgres',
+        'PASSWORD':'088066'
     }
 }
+
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'evento',
+#         'USER': 'admin',
+#         'PASSWORD': 'password',
+#         'HOST': 'localhost',
+#         'PORT': '5432',  
+#     }
+# }
 
 
 
@@ -275,6 +275,6 @@ CELERY_TIMEZONE = 'Asia/kolkata'
 CELERY_BEAT_SCHEDULE = {
     'expire-events-and-tickets': {
         'task': 'accounts.tasks.expire_events_task',
-        'schedule': 200,  # 12 hours in seconds
+        'schedule':43200,  # 12 hours in seconds
     },
 }

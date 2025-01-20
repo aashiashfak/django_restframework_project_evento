@@ -737,56 +737,63 @@ class VendorReportGeneratorView(APIView):
                     booking_date__range=[start_date, end_date],
                     ticket_type__event__vendor=vendor
                 )
-                .annotate(date=TruncDate('booking_date'))
                 .values(
-                    'date',
+                    'id',  # Ensure each ticket is unique
+                    'booking_date',
                     'ticket_type__event__event_name',
                     'ticket_status',
-                    'ticket_price', 
-                    'ticket_type__type_name', 
-                    'user__username', 
-                    'user__email', 
+                    'ticket_price',
+                    'ticket_type__type_name',
+                    'user__username',
+                    'user__email',
                     'user__phone_number',
-                    'ticket_count'
+                    'ticket_count',
                 )
-                .annotate(total_bookings=Sum('ticket_count'), total_amount=Sum('ticket_price'))
-                .order_by('date')
+                .order_by('booking_date')
             )
-            print("Aggregated bookings:", bookings)
         except Exception as e:
             print("Error querying ticket bookings:", e)
             return Response({'error': 'Failed to query ticket bookings'}, status=500)
 
-        # Convert bookings to a dictionary keyed by date for easy lookup
-        bookings_by_date = {}
-        for booking in bookings:
-            date_str = booking['date'].strftime('%Y-%m-%d')
-            if date_str not in bookings_by_date:
-                bookings_by_date[date_str] = []
-            bookings_by_date[date_str].append(booking)
-
-        # Wrap data according to date and prepare daily bookings summary
+        # Initialize totals and daily bookings
+        total_tickets = 0
+        total_amount = 0
         daily_bookings = {}
-        for single_date in date_range:
-            date_str = single_date.date().strftime('%Y-%m-%d')
-            daily_bookings[date_str] = bookings_by_date.get(date_str, [])
 
-        print("Daily bookings summary:", daily_bookings)
+        # Process bookings to calculate totals and group by date
+        for booking in bookings:
+            booking_date = booking['booking_date'].strftime('%Y-%m-%d')
+                
+            # Initialize daily bookings for the date
+            if booking_date not in daily_bookings:
+                daily_bookings[booking_date] = []
+                
+                # Add booking to the specific date
+            daily_bookings[booking_date].append({
+                "date": booking_date,
+                "event_name": booking['ticket_type__event__event_name'],
+                "username": booking['user__username'],
+                "email": booking['user__email'],
+                "phone_number": booking['user__phone_number'],
+                "ticket_count": booking['ticket_count'],
+                "ticket_price": booking['ticket_price'],
+                "ticket_status": booking['ticket_status'],
+                "ticket_type": booking['ticket_type__type_name'],
+            })
 
-        # Calculate total tickets count and total amount for the week
-        total_tickets = sum(booking['total_bookings'] for day in daily_bookings.values() for booking in day)
-        total_amount = sum(
-            booking['total_amount'] if booking['ticket_status'] != 'canceled' else 0
-            for day in daily_bookings.values() for booking in day
-        )
+            # Update totals
+            total_tickets += booking['ticket_count']
+            if booking['ticket_status'] != 'canceled':  # Only add active ticket prices
+                total_amount += booking['ticket_price']
 
-        context = {
-            'start_date': start_date.strftime('%Y-%m-%d'),
-            'end_date': end_date.strftime('%Y-%m-%d'),
-            'total_tickets': total_tickets,
-            'total_amount': total_amount,
-            'daily_bookings': daily_bookings,  # Include the daily bookings summary here
+            # Prepare the response
+        response_data = {
+            "start_date": start_date.strftime('%d %b %Y'),
+            "end_date": end_date.strftime('%d %b %Y'),
+            "total_tickets": total_tickets,
+            "total_amount": total_amount,
+            "daily_bookings": daily_bookings,
         }
-        print("Context data:", context)
 
-        return Response(context)
+        return Response(response_data)
+    

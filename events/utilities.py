@@ -4,6 +4,7 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 from .models import TicketType,Payment
 import razorpay
 from django.conf import settings
+from decimal import Decimal
 
 def generate_qr_code(payment):
     # Generate QR code
@@ -41,10 +42,18 @@ def initiate_razorpay_payment(ticket_id, ticket_count):
         print('apikey',settings.RAZORPAY_API_KEYS,'secret:', settings.RAZORPAY_API_SECRET_KEY)
         print('client',client)
 
+        booking_fee_rate = Decimal('0.04')
+        tax_rate = Decimal('0.1')
+
+
+        subtotal = ticket.price * ticket_count
+        booking_fee = subtotal * booking_fee_rate
+        tax = subtotal * tax_rate
+        total_amount = subtotal + booking_fee + tax
 
         # Create order data
         order_data = {
-            "amount": int(ticket.price* ticket_count) * 100,  # Amount should be in the smallest unit (e.g., paise)
+            "amount": int(total_amount * 100),  # Amount should be in the smallest unit (e.g., paise)
             "currency": "INR",
             "payment_capture": "1",
         }
